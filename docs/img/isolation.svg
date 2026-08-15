@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 1180 520" width="1180" height="520" role="img" aria-label="Diagram: two isolated config dirs sharing one login and one plugins tree">
+<title>How tack isolates two profiles</title>
+<style>text{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}</style>
+<rect width="1180" height="520" rx="14" fill="#0B0E14"/>
+<rect x="60" y="50" width="460" height="150" rx="10" fill="#11151F" stroke="#232B3A" stroke-width="1.5"/>
+<text x="80" y="80" font-size="16" fill="#5AA9F0" text-anchor="start" font-weight="bold">terminal 1</text>
+<text x="80" y="112" font-size="15" fill="#D4AE66" text-anchor="start" font-weight="normal">$ tack shell dev</text>
+<text x="80" y="140" font-size="14" fill="#7C879B" text-anchor="start" font-weight="normal">CLAUDE_CONFIG_DIR=</text>
+<text x="80" y="164" font-size="14" fill="#5AA9F0" text-anchor="start" font-weight="normal">~/.claude-profiles/dev</text>
+<text x="80" y="188" font-size="12.5" fill="#7C879B" text-anchor="start" font-weight="normal">CLAUDE_SECURESTORAGE_CONFIG_DIR=  (empty)</text>
+<path d="M290 200 L290 248" stroke="#3A4557" stroke-width="2" marker-end="url(#a)"/>
+<rect x="660" y="50" width="460" height="150" rx="10" fill="#11151F" stroke="#232B3A" stroke-width="1.5"/>
+<text x="680" y="80" font-size="16" fill="#A97BE8" text-anchor="start" font-weight="bold">terminal 2</text>
+<text x="680" y="112" font-size="15" fill="#D4AE66" text-anchor="start" font-weight="normal">$ tack shell video</text>
+<text x="680" y="140" font-size="14" fill="#7C879B" text-anchor="start" font-weight="normal">CLAUDE_CONFIG_DIR=</text>
+<text x="680" y="164" font-size="14" fill="#A97BE8" text-anchor="start" font-weight="normal">~/.claude-profiles/video</text>
+<text x="680" y="188" font-size="12.5" fill="#7C879B" text-anchor="start" font-weight="normal">CLAUDE_SECURESTORAGE_CONFIG_DIR=  (empty)</text>
+<path d="M890 200 L890 248" stroke="#3A4557" stroke-width="2" marker-end="url(#a)"/>
+<rect x="60" y="250" width="460" height="110" rx="10" fill="#11151F" stroke="#232B3A" stroke-width="1.5"/>
+<text x="80" y="278" font-size="14" fill="#5AA9F0" text-anchor="start" font-weight="bold">~/.claude-profiles/dev</text>
+<text x="80" y="304" font-size="13.5" fill="#D6DEEA" text-anchor="start" font-weight="normal">settings.json   hooks/   skills/   agents/</text>
+<text x="80" y="328" font-size="13.5" fill="#D6DEEA" text-anchor="start" font-weight="normal">commands/   output-styles/   templates/</text>
+<text x="80" y="350" font-size="12.5" fill="#7C879B" text-anchor="start" font-weight="normal">written fresh by every apply</text>
+<path d="M290 360 L290 404" stroke="#3A4557" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<rect x="660" y="250" width="460" height="110" rx="10" fill="#11151F" stroke="#232B3A" stroke-width="1.5"/>
+<text x="680" y="278" font-size="14" fill="#A97BE8" text-anchor="start" font-weight="bold">~/.claude-profiles/video</text>
+<text x="680" y="304" font-size="13.5" fill="#D6DEEA" text-anchor="start" font-weight="normal">settings.json   hooks/   skills/   agents/</text>
+<text x="680" y="328" font-size="13.5" fill="#D6DEEA" text-anchor="start" font-weight="normal">commands/   output-styles/   templates/</text>
+<text x="680" y="350" font-size="12.5" fill="#7C879B" text-anchor="start" font-weight="normal">written fresh by every apply</text>
+<path d="M890 360 L890 404" stroke="#3A4557" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<rect x="60" y="406" width="1060" height="84" rx="10" fill="#151A26" stroke="#D4AE66" stroke-width="1.5"/>
+<text x="90" y="436" font-size="15" fill="#D4AE66" text-anchor="start" font-weight="bold">~/.claude   (shared, symlinked in)</text>
+<text x="90" y="464" font-size="13.5" fill="#D6DEEA" text-anchor="start" font-weight="normal">plugins/  ~3 GB, one copy      login / keychain      CLAUDE.md      personal-overrides.json</text>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3A4557"/></marker></defs>
+<text x="590.0" y="26" font-size="17" fill="#7C879B" text-anchor="middle" font-weight="normal">neither terminal can overwrite the other</text>
+</svg>
