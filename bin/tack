@@ -1,0 +1,295 @@
+#!/usr/bin/env bash
+# tack - harness profile switcher. Installed to ~/.local/bin by setup-core.sh.
+# Profile repos (tack-<name>) live under $HARNESS_ROOT; each pins core
+# as a submodule and applies via its own install.sh.
+set -uo pipefail
+
+# The config dir an apply writes to. `tack shell` exports CLAUDE_CONFIG_DIR so a
+# second profile can run in another terminal; unset, this is ~/.claude and
+# nothing about tack changes.
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+# .harness-root stays on ~/.claude on purpose: where the profile repos live is a
+# property of the machine, not of the profile. A per-config-dir copy would be
+# absent on the first isolated run and silently fall back to ~/Projects.
+# The machine-wide config dir, which stays the source of truth for state that is
+# shared across profiles: the plugins tree, the login, the overrides below.
+SHARED_CLAUDE="$HOME/.claude"  # harness:shared
+ROOT_FILE="$HOME/.claude/.harness-root"
+HARNESS_ROOT="$( [ -f "$ROOT_FILE" ] && cat "$ROOT_FILE" || echo "$HOME/Projects" )"
+ACTIVE_FILE="$CLAUDE_DIR/.harness-active"
+# No default org: `tack install <name>` clones from a GitHub account, and
+# guessing one would send a stranger's first command at somebody else's repo.
+ORG="${HARNESS_ORG:-}"
+# Profile repos are <prefix><name>. Configurable so an existing collection does
+# not have to be renamed to adopt this tool.
+PREFIX="${HARNESS_PROFILE_PREFIX:-tack-}"
+PROFILE_HOME="${HARNESS_PROFILE_HOME:-$HOME/.claude-profiles}"
+# Machine-local, not profile-local. Linked into an isolated config dir so editing
+# ~/.claude/personal-overrides.json still reaches every profile.
+SHARED_LINKS=".harness-skills-keep .harness-marketplaces-keep personal-overrides.json CLAUDE.md"
+
+repo_dir() { echo "$HARNESS_ROOT/${PREFIX}$1"; }
+
+cmd_list() {
+  local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo none )"
+  echo "harness root: $HARNESS_ROOT   active: $active${CLAUDE_CONFIG_DIR:+   config: $CLAUDE_CONFIG_DIR}"
+  for d in "$HARNESS_ROOT"/"$PREFIX"*; do
+    [ -d "$d" ] || continue
+    local n="${d##*/$PREFIX}"
+    [ "$n" = "core" ] && continue
+    printf '  %s %s\n' "$( [ "$n" = "$active" ] && echo '*' || echo ' ' )" "$n"
+  done
+}
+
+cmd_use() {
+  local name="${1:?usage: tack use <name>}"; local dir; dir="$(repo_dir "$name")"
+  [ -d "$dir" ] || { echo "tack: $dir not found. Try: tack install $name" >&2; exit 1; }
+  # The apply's exit status used to be discarded, so a failed install.sh still
+  # read as success and cmd_sync inherited that. Keep the status, and keep the
+  # output: an apply is the only thing that rewrites the config dir and until
+  # now it left no record of what it changed.
+  local log="$CLAUDE_DIR/.harness-apply.log"
+  local rc
+  { echo "=== $(date '+%Y-%m-%d %H:%M:%S') tack use $name"; } >> "$log" 2>/dev/null || true
+  ( cd "$dir" && git submodule update --init --quiet 2>/dev/null; bash ./install.sh ) 2>&1 | tee -a "$log"
+  rc=${PIPESTATUS[0]}
+  if [ "$rc" -ne 0 ]; then
+    echo "tack: apply failed for profile '$name' (exit $rc, see $log)." >&2
+    echo "  The harness may be half-applied. Re-run: tack use $name" >&2
+  fi
+  return "$rc"
+}
+
+# --- isolated profiles -------------------------------------------------------
+# One config dir per profile under ~/.claude-profiles, a sibling of ~/.claude
+# and never nested inside it: nested, apply-profile's quarantine sweep and
+# Claude Code's own skills scan would both walk into the other profile's tree.
+
+require_profile() {
+  local name="${1:-}" verb="$2" dir
+  [ -n "$name" ] || { echo "usage: tack $verb <name>" >&2; return 1; }
+  dir="$(repo_dir "$name")"
+  [ -d "$dir" ] || { echo "tack: $dir not found. Try: tack install $name" >&2; return 1; }
+  # A profile repo applies through its OWN pinned core submodule. A pin from
+  # before config-dir support ignores CLAUDE_CONFIG_DIR and writes this profile
+  # into ~/.claude, wiping whatever the other terminal is running. Refuse rather
+  # than destroy it.
+  local pinned="$dir/core/lib/apply-profile.sh"
+  if [ -f "$pinned" ] && ! grep -q CLAUDE_CONFIG_DIR "$pinned"; then
+    echo "tack: profile '$name' pins a core that predates isolated config dirs." >&2
+    echo "  Applying it would write '$name' into ~/.claude and overwrite the profile running there." >&2
+    echo "  Fix: tack sync --push   (advances every profile's core pin), then retry." >&2
+    return 1
+  fi
+}
+
+# Create the config dir for <name> if needed and echo its path. What is linked
+# back to ~/.claude is shared on purpose: plugins are 3 GB and a per-profile copy
+# means a full marketplace re-clone, and the rest is machine-local state that
+# should stay editable in one place.
+prep_profile_dir() {
+  local name="$1" cfg="$PROFILE_HOME/$1" f
+  mkdir -p "$cfg"
+  # One 3 GB plugins tree for every profile, hence the link rather than a copy.
+  if [ ! -e "$cfg/plugins" ] && ! ln -s "$SHARED_CLAUDE/plugins" "$cfg/plugins" 2>/dev/null; then
+    # Git Bash cannot symlink without developer mode (same limit as skills_link).
+    echo "tack: could not link $cfg/plugins. Claude Code will re-download every plugin for this profile (~3 GB)." >&2
+  fi
+  for f in $SHARED_LINKS; do
+    [ -e "$cfg/$f" ] && continue
+    [ -e "$SHARED_CLAUDE/$f" ] || continue
+    ln -s "$SHARED_CLAUDE/$f" "$cfg/$f" 2>/dev/null || true
+  done
+  # Onboarding state and per-project trust. Copied, not linked: the CLI rewrites
+  # it constantly and the trust set is per config dir.
+  [ -e "$cfg/.claude.json" ] || cp "$HOME/.claude.json" "$cfg/.claude.json" 2>/dev/null || true
+  echo "$cfg"
+}
+
+# The env every isolated context needs. CLAUDE_SECURESTORAGE_CONFIG_DIR must be
+# set and EMPTY: that is the only value that maps back to the existing keychain
+# entry. Any path there, including the machine-wide config dir, hashes into a
+# second credential slot and you are asked to log in again.
+# Deliberately NOT exporting HARNESS_PROFILE: scripts/bootstrap.sh reads that
+# name to choose which profile to install. The statusline reads .harness-active.
+export_profile_env() {
+  export CLAUDE_CONFIG_DIR="$1"
+  export CLAUDE_SECURESTORAGE_CONFIG_DIR=""
+  CLAUDE_DIR="$1"
+  ACTIVE_FILE="$1/.harness-active"
+}
+
+cmd_shell() {
+  local name="${1:-}"
+  require_profile "$name" shell || return 1
+  if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    echo "tack: already in an isolated shell ($CLAUDE_CONFIG_DIR). Run 'exit' first." >&2
+    return 1
+  fi
+  local cfg; cfg="$(prep_profile_dir "$name")"
+  export_profile_env "$cfg"
+  cmd_use "$name" || return $?
+  echo ""
+  echo "tack: isolated shell for '$name'"
+  echo "  CLAUDE_CONFIG_DIR=$cfg   (plugins, login and memory shared with ~/.claude)"
+  echo "  'exit' returns to your normal shell. Delete with: rm -rf $cfg"
+  # Not exec: with exec, 'exit' closes the terminal tab instead of returning.
+  "${SHELL:-/bin/bash}"
+}
+
+cmd_tmux() {
+  local name="${1:-}"
+  require_profile "$name" tmux || return 1
+  command -v tmux >/dev/null 2>&1 || { echo "tack: tmux not installed. Try: brew install tmux" >&2; return 1; }
+  # -A attaches if the session already exists, so this is also "switch to it".
+  exec tmux new -As "$name" "tack shell $name"
+}
+
+cmd_herd() {
+  local name="${1:-}"
+  require_profile "$name" herd || return 1
+  command -v herdr >/dev/null 2>&1 || { echo "tack: herdr not installed. Use 'tack tmux $name' instead." >&2; return 1; }
+  if [ "${HERDR_ENV:-}" != "1" ]; then
+    echo "tack: not running inside Herdr, so there is no session to add a workspace to." >&2
+    echo "  Start herdr first, then run 'tack herd $name' from a pane. Or use: tack tmux $name" >&2
+    return 1
+  fi
+  local cfg; cfg="$(prep_profile_dir "$name")"
+  # Apply once before the workspace opens, so its first pane lands on a config
+  # dir that is already composed.
+  ( export_profile_env "$cfg"; cmd_use "$name" ) || return $?
+  herdr workspace create --label "$name" --focus \
+    --env "CLAUDE_CONFIG_DIR=$cfg" \
+    --env "CLAUDE_SECURESTORAGE_CONFIG_DIR="
+}
+
+cmd_install() {
+  local name="${1:?usage: tack install <name>}"; local dir; dir="$(repo_dir "$name")"
+  if [ ! -d "$dir" ]; then
+    if [ -z "$ORG" ]; then
+      echo "tack: HARNESS_ORG is not set, so there is no account to clone '${PREFIX}$name' from." >&2
+      echo "  Fix: export HARNESS_ORG=<your-github-account> in your shell rc, then re-run." >&2
+      echo "  No profile repo yet? Start from the template: https://github.com/Mariano215/tack-profile-example" >&2
+      return 1
+    fi
+    mkdir -p "$HARNESS_ROOT"
+    git clone --recurse-submodules "https://github.com/$ORG/${PREFIX}$name.git" "$dir" || return 1
+  fi
+  cmd_use "$name"
+}
+
+cmd_sync() {
+  # --push: publish the pin bumps. Off by default because `git push` sends the
+  # whole branch, so a repo carrying unrelated local commits would have them
+  # published as a side effect of a sync. An unpushed bump is still useless to
+  # every other machine, so the flag exists rather than a manual six-repo loop.
+  local push=0; [ "${1:-}" = "--push" ] && push=1
+  for d in "$HARNESS_ROOT"/"$PREFIX"*; do
+    # A profile directory that is not a repo is work that exists on exactly one
+    # machine. Sync used to skip these in silence, which is how two profiles sat
+    # unversioned for a week. Say so every run; it costs one line.
+    if [ ! -d "$d/.git" ]; then
+      echo "== $(basename "$d") =="
+      echo "  NOT A GIT REPO. This profile exists only on this machine."
+      echo "  Fix: cd $d && git init && git add -A && gh repo create $ORG/$(basename "$d") --private --source=. --push"
+      continue
+    fi
+    echo "== $(basename "$d") =="
+    (
+      cd "$d" || exit 0
+      # A bare `git pull` has no strategy, so on a repo whose remote moved it
+      # only asks how to reconcile and fails. The old code then fell through and
+      # bumped the pin anyway, committing onto a stale base: that is how eight
+      # repos each grew three commits the remote had never seen. Stop the repo
+      # here instead. Divergence is a human call, and a sync that stacks another
+      # commit on top of it only makes that call harder.
+      if ! git pull --ff-only -q; then
+        echo "  pull is not a fast-forward, skipped (no pin bump on a stale base)."
+        echo "  Fix: cd $d && git fetch && git log --oneline HEAD..origin/main"
+        echo "       then rebase or reset local commits onto origin/main and re-run."
+        echo "       If it is credentials, not divergence: gh auth setup-git"
+        exit 0
+      fi
+      [ -d core ] || exit 0
+      # A profile repo pins core as a submodule and its install.sh runs
+      # `submodule update --init`, which snaps core back to the pinned commit.
+      # So pulling core with --remote and then applying threw the update away:
+      # a core fix could never arrive through a sync. Advance the pin, which is
+      # what --remote asks for, and commit it so the apply actually sees it.
+      before="$(git rev-parse HEAD:core 2>/dev/null)"
+      git submodule update --init --remote --quiet || true
+      after="$(git -C core rev-parse HEAD 2>/dev/null)"
+      if [ -n "$after" ] && [ "$before" != "$after" ]; then
+        git add core && git commit -q -m "chore(core): bump submodule to $(git -C core rev-parse --short HEAD)" \
+          && echo "  core pin bumped to $(git -C core rev-parse --short HEAD)"
+      fi
+      # Push on the flag, not on "did this run bump": a bump committed by an
+      # earlier sync is exactly the commit that never reached the remote, and
+      # gating on this run's bump left it stranded there forever.
+      [ "$push" = 1 ] || exit 0
+      ahead="$(git rev-list --count @{u}..HEAD 2>/dev/null)" || exit 0
+      [ "${ahead:-0}" -gt 0 ] || exit 0
+      git push -q && echo "  pushed $ahead commit(s)" \
+        || echo "  push failed, $ahead commit(s) still local (git credentials? try: gh auth setup-git)"
+    )
+  done
+  # Report anything a sync cannot carry: work that is committed but unpushed,
+  # or not committed at all. Pulling and bumping pins while a repo holds
+  # untracked skills looks like success and is not.
+  local unsynced=0
+  for d in "$HARNESS_ROOT"/"$PREFIX"*; do
+    [ -d "$d/.git" ] || continue
+    local n dirty ahead
+    n="$(basename "$d")"
+    dirty="$(git -C "$d" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+    ahead="$(git -C "$d" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)"
+    if [ "${dirty:-0}" -gt 0 ] || [ "${ahead:-0}" -gt 0 ]; then
+      [ "$unsynced" -eq 0 ] && echo "== not on GitHub =="
+      unsynced=1
+      echo "  $n: ${dirty:-0} uncommitted, ${ahead:-0} unpushed"
+    fi
+  done
+  if [ "$unsynced" -eq 1 ]; then
+    echo "  Fix: in each repo above, run 'bash core/scripts/sanitize-check.sh' then commit and 'tack sync --push'."
+  fi
+
+  # Pulling alone leaves the config dir on the old engine, so a synced machine kept
+  # running removed hooks, skills and plugins until someone remembered to run
+  # `tack use`. Sync means sync: re-apply the active profile.
+  local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo "" )"
+  if [ -n "$active" ]; then
+    echo "== re-applying active profile: $active =="
+    cmd_use "$active" || return $?
+  else
+    echo "synced. No active profile recorded; run: tack use <name>"
+  fi
+}
+
+cmd_status() {
+  local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo none )"
+  echo "active profile: $active${CLAUDE_CONFIG_DIR:+   config: $CLAUDE_CONFIG_DIR}"
+  for d in "$PROFILE_HOME"/*/; do
+    [ -f "$d/.harness-active" ] || continue
+    echo "  isolated: $(basename "$d")  (tack tmux $(basename "$d"))"
+  done
+  if command -v claude >/dev/null 2>&1; then
+    echo "MCP servers:"; claude mcp list 2>/dev/null | sed -n 's/^\([a-zA-Z0-9_-]*\): .* - .*/  \1/p' | sort -u
+  fi
+  if command -v jq >/dev/null 2>&1 && [ -f "$CLAUDE_DIR/settings.json" ]; then
+    echo "enabled plugins: $(jq -r '[(.enabledPlugins//{})|to_entries[]|select(.value)]|length' "$CLAUDE_DIR/settings.json")"
+  fi
+}
+
+# Commands return the apply status, so the caller (a script, a hook, CI) can
+# tell a real sync from one that pulled fine and then failed to apply.
+case "${1:-list}" in
+  list)    cmd_list ;;
+  use)     shift; cmd_use "$@" ;;
+  shell)   shift; cmd_shell "$@" ;;
+  tmux)    shift; cmd_tmux "$@" ;;
+  herd)    shift; cmd_herd "$@" ;;
+  install) shift; cmd_install "$@" ;;
+  sync)    shift; cmd_sync "$@" ;;
+  status)  cmd_status ;;
+  *) echo "usage: tack {list|use <name>|shell <name>|tmux <name>|herd <name>|install <name>|sync [--push]|status}" >&2; exit 1 ;;
+esac

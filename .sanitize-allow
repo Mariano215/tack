@@ -1,0 +1,4 @@
+# sanitize-check exemptions: one git pathspec per line.
+#
+# LICENSE carries the copyright holder's name by definition.
+LICENSE

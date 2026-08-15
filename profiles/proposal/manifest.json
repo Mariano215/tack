@@ -1,0 +1,13 @@
+{
+  "name": "proposal",
+  "description": "Client proposals and engagement deliverables",
+  "caveman": "off",
+  "plugins": {
+    "frontend-slides@frontend-slides": true
+  },
+  "mcp": [
+    "atlassian"
+  ],
+  "env": {},
+  "notes": "Document and proposal work. Prose, not code, so no context7. Put your own deliverable templates in this profile repo's skills/."
+}

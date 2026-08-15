@@ -1,0 +1,197 @@
+{
+  "cleanupPeriodDays": 60,
+  "outputStyle": "Plain",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CAVEMAN_DEFAULT_MODE": "off"
+  },
+  "permissions": {
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fdx:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.claude/.credentials.json)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"\u26a0\ufe0f Auto-compact firing: context window at limit. Committed work is safe; in-flight intent may be summarized.\"}'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/skill-router.sh\" ]; then bash \"$c/hooks/skill-router.sh\"; fi",
+            "timeout": 5,
+            "statusMessage": "Routing intent..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "p=\"$(command -v python3 || command -v python)\"; c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -n \"$p\" ] && [ -f \"$c/ghost/ghost_precheck.py\" ]; then \"$p\" \"$c/ghost/ghost_precheck.py\"; fi",
+            "timeout": 10,
+            "statusMessage": "ghost slop check..."
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task|Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/model-router-nudge.sh\" ]; then bash \"$c/hooks/model-router-nudge.sh\"; fi",
+            "timeout": 5,
+            "statusMessage": "Checking model/effort tier..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); [[ \"$f\" == *graphify-out* ]] && exit 0; [ -f \"graphify-out/graph.json\" ] || exit 0; touch graphify-out/.needs_update 2>/dev/null; jq -n --arg f \"$f\" '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":(\"graphify: file written (\" + $f + \"): graph stale. Run /graphify . --update before next graph query.\")}}' 2>/dev/null || true",
+            "statusMessage": "Flagging graphify update..."
+          },
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/security-file-nudge.sh\" ]; then bash \"$c/hooks/security-file-nudge.sh\"; fi"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/plugin-auto-update.sh\" ]; then bash \"$c/hooks/plugin-auto-update.sh\"; fi",
+            "async": true,
+            "statusMessage": "Checking for plugin updates..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/session-summary.sh\" ]; then bash \"$c/hooks/session-summary.sh\"; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline-command.sh\""
+  },
+  "enabledPlugins": {
+    "ponytail@ponytail": true,
+    "caveman@caveman": true,
+    "security-guidance@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "claude-mem@thedotmack": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": false,
+    "codex@openai-codex": false,
+    "frontend-design@claude-plugins-official": false,
+    "superpowers@claude-plugins-official": false,
+    "playwright@claude-plugins-official": false,
+    "plugin-dev@claude-plugins-official": false,
+    "chrome-devtools-mcp@claude-plugins-official": false,
+    "telegram@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": false,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": false,
+    "agent-skills@addy-agent-skills": false,
+    "frontend-slides@frontend-slides": false
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    },
+    "thedotmack": {
+      "source": {
+        "source": "github",
+        "repo": "thedotmack/claude-mem"
+      }
+    },
+    "addy-agent-skills": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/addyosmani/agent-skills.git"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    },
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      }
+    },
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    },
+    "frontend-slides": {
+      "source": {
+        "source": "github",
+        "repo": "zarazhangrui/frontend-slides"
+      }
+    }
+  },
+  "agent": "task-orchestrator",
+  "autoUpdatesChannel": "latest",
+  "autoMemoryEnabled": false,
+  "useAutoModeDuringPlan": true
+}

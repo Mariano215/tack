@@ -1,0 +1,21 @@
+{
+  "name": "web",
+  "description": "Web development, frontend frameworks with live browser testing",
+  "caveman": "off",
+  "plugins": {
+    "superpowers@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "chrome-devtools-mcp@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "frontend-slides@frontend-slides": true
+  },
+  "mcp": [
+    "chrome-devtools",
+    "playwright"
+  ],
+  "env": {},
+  "notes": "Live browser testing via chrome-devtools and playwright MCP."
+}

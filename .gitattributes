@@ -1,0 +1,23 @@
+# Shell scripts must keep LF endings. Cloned on Windows with core.autocrlf=true,
+# a CRLF .sh dies at the shebang ("bash\r: no such file or directory") and every
+# hook in settings.json fails silently, so the harness looks installed and does
+# nothing. Forcing eol=lf here beats asking each machine to configure git.
+*.sh text eol=lf
+bin/tack text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Extensionless launchers shipped inside skills, same shebang problem as *.sh
+skills/davinci-resolve/dr text eol=lf
+skills/fal/fal text eol=lf
+
+# Windows-only, needs CRLF to run from Explorer
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+
+# Never munge these as text
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary

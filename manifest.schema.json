@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tack profile manifest",
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "profile id, matches repo suffix tack-<name>"
+    },
+    "description": {
+      "type": "string"
+    },
+    "caveman": {
+      "enum": [
+        "off",
+        "lite",
+        "full",
+        "ultra"
+      ],
+      "description": "sets CAVEMAN_DEFAULT_MODE"
+    },
+    "permissions": {
+      "type": "object",
+      "description": "settings.permissions deltas merged over the core baseline. Declaring defaultMode here makes it profile-owned: personal-overrides.json can no longer set it, so the authority the agent runs under is readable in git. Other permission keys (allow lists, per-machine grants) stay machine-local.",
+      "properties": {
+        "defaultMode": {
+          "enum": [
+            "default",
+            "auto",
+            "acceptEdits",
+            "plan",
+            "bypassPermissions"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "plugins": {
+      "type": "object",
+      "description": "enabledPlugins deltas merged over the core baseline; key is <plugin>@<marketplace>, value true/false",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "mcp": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "MCP servers this profile wants. Plugin-provided (context7, chrome-devtools, playwright) ride enabledPlugins; only 'atlassian' is added/removed explicitly. tokensave and sequential-thinking are always dropped (tokensave has a CLI; native reasoning covers sequential-thinking)."
+    },
+    "skills_link": {
+      "type": "object",
+      "description": "skills symlinked from outside the harness; key is the skill name under ~/.claude/skills, value is the source path. Prefix with ~/ or $HARNESS_ROOT/ (the machine's repo dir, from ~/.claude/.harness-root) to keep a committed manifest portable; a bare absolute path is one machine's layout and will resolve nowhere else. Missing targets are skipped, not fatal.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

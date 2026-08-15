@@ -1,0 +1,8 @@
+{
+  "name": "minimal",
+  "description": "Everyday lightweight tasks, core baseline only",
+  "caveman": "off",
+  "plugins": {},
+  "mcp": [],
+  "env": {}
+}
