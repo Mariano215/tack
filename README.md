@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/img/demo.svg" alt="Two terminals side by side, each running a different tack profile with its own plugins and config dir" width="100%">
+  <img src="docs/img/demo.gif" alt="Two terminals side by side, each running a different tack profile. The left loads 9 plugins, the right loads 2." width="100%">
 </p>
 
 ```bash
