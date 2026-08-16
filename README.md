@@ -291,6 +291,17 @@ that a sync cannot carry, rather than reporting success and leaving them behind.
 | `HARNESS_CORE_URL` | this repo | Engine source, for forks |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Config dir an apply writes to |
 
+## Sharing profiles
+
+Published profiles carry the [`tack-profile`](https://github.com/topics/tack-profile)
+GitHub topic. [PROFILES.md](PROFILES.md) is a curated list, and a PR adds a row.
+
+Installing someone else's profile runs their `install.sh` and can change your
+agent's permission mode, hooks and MCP servers. Read
+[PROFILES.md](PROFILES.md#read-this-before-installing-someone-elses-profile)
+first, and try an unfamiliar profile with `tack shell <name>` so it lands in an
+isolated config dir rather than your main one.
+
 ## What ships here
 
 The engine (`bin/tack`, `lib/`, `hooks/`, `verify-setup.sh`), a set of
