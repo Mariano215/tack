@@ -1,12 +1,9 @@
 {
   "cleanupPeriodDays": 60,
-  "outputStyle": "Plain",
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "CAVEMAN_DEFAULT_MODE": "off"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "defaultMode": "auto",
     "deny": [
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
@@ -119,14 +116,14 @@
     "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline-command.sh\""
   },
   "enabledPlugins": {
-    "ponytail@ponytail": true,
-    "caveman@caveman": true,
-    "security-guidance@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "claude-mem@thedotmack": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true,
+    "ponytail@ponytail": false,
+    "caveman@caveman": false,
+    "security-guidance@claude-plugins-official": false,
+    "code-review@claude-plugins-official": false,
+    "commit-commands@claude-plugins-official": false,
+    "claude-mem@thedotmack": false,
+    "typescript-lsp@claude-plugins-official": false,
+    "pyright-lsp@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
     "codex@openai-codex": false,
     "frontend-design@claude-plugins-official": false,

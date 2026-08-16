@@ -78,6 +78,21 @@ HARNESS_NO_API_KEY=1 HARNESS_YOLO_ALIAS=1 bash "$CORE/lib/setup-shell-aliases.sh
 grep -q 'ANTHROPIC_API_KEY' "$RC" || bad "--no-api-key opt-in did not take effect"
 grep -q 'dangerously-skip-permissions' "$RC" || bad "--yolo-alias opt-in did not take effect"
 
+echo "== 6. a second apply waits for the lock instead of failing =="
+CFG3="$TMP/lockA"; CFG4="$TMP/lockB"; mkdir -p "$CFG3" "$CFG4"
+apply "$CFG3" >/dev/null 2>&1 &
+bg=$!
+sleep 0.3
+out="$(apply "$CFG4")"; rc=$?
+wait "$bg" 2>/dev/null
+if [ "$rc" -ne 0 ]; then
+  echo "$out"; bad "second concurrent apply failed instead of waiting"
+else
+  ok "concurrent applies serialise without failing"
+fi
+[ -f "$CFG4/settings.json" ] || bad "second apply produced no settings.json"
+
+
 echo ""
 if [ "$fails" -ne 0 ]; then
   echo "test-apply FAILED ($fails)."

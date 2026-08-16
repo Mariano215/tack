@@ -13,10 +13,22 @@ set -euo pipefail
 # ponytail: mkdir is the atomic primitive everywhere; macOS has no flock(1).
 LOCK="$HOME/.claude/.harness-apply.lock"
 mkdir -p "$HOME/.claude"  # harness:shared, the lock is machine-wide by design
+# Wait rather than fail. Opening two profiles in two terminals is the headline
+# use case, and both applies race for this lock the moment you do it. Failing
+# the second one made the documented workflow break on first contact.
 if ! mkdir "$LOCK" 2>/dev/null; then
-  echo "apply-profile: another apply is already running." >&2
-  echo "  Wait for it to finish. If nothing is running, the lock is stale: rmdir $LOCK" >&2
-  exit 1
+  echo "apply-profile: another apply is running, waiting for it to finish..." >&2
+  waited=0
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    sleep 1
+    waited=$((waited + 1))
+    if [ "$waited" -ge 180 ]; then
+      echo "apply-profile: still locked after ${waited}s, giving up." >&2
+      echo "  If no other apply is running the lock is stale: rmdir $LOCK" >&2
+      exit 1
+    fi
+  done
+  echo "apply-profile: lock acquired after ${waited}s." >&2
 fi
 trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
 

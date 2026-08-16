@@ -10,7 +10,8 @@
     "playwright@claude-plugins-official": true,
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "typescript-lsp@claude-plugins-official": true,
-    "frontend-slides@frontend-slides": true
+    "frontend-slides@frontend-slides": true,
+    "code-review@claude-plugins-official": true
   },
   "mcp": [
     "chrome-devtools",
