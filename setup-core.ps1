@@ -1,7 +1,6 @@
 # setup-core.ps1  [harnessRoot]
 # Windows bootstrap: record the profile-repo root, install the tokensave CLI, and
-# confirm Git Bash is available (the tack switcher and apply-profile are bash
-# scripts; on Windows run them from Git Bash or WSL).
+# install PowerShell and cmd launchers for the Bash-based tack implementation.
 param([string]$HarnessRoot = "$env:USERPROFILE\Projects")
 
 $ErrorActionPreference = "Stop"
@@ -62,6 +61,7 @@ function Install-ClaudeAliases {
   $block = @"
 $marker
 function claude-code { `$env:ANTHROPIC_API_KEY = ''; claude --dangerously-skip-permissions @args }
+function tack { & "`$env:USERPROFILE\.local\bin\tack.cmd" @args }
 $endMarker
 "@
   if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Force -Path $PROFILE | Out-Null }
@@ -81,16 +81,21 @@ Install-ClaudeAliases
 # tack on PATH, matching setup-core.sh. Without this the switcher was only
 # reachable as `bash <coreDir>/bin/tack`, so `tack sync` did not exist on Windows and
 # apply-profile's tack refresh landed somewhere Windows never looked.
+# Keep the extensionless launcher for Git Bash, and install a .cmd shim for
+# PowerShell and cmd.exe. PowerShell resolves the profile function above before
+# it considers the extensionless file, so `tack install dev` runs through Bash
+# instead of asking Windows which application should open `tack`.
 $localBin = "$env:USERPROFILE\.local\bin"
 New-Item -ItemType Directory -Force -Path $localBin | Out-Null
 Copy-Item "$coreDir\bin\tack" "$localBin\tack" -Force
+Copy-Item "$coreDir\bin\tack.cmd" "$localBin\tack.cmd" -Force
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$localBin*") {
   [Environment]::SetEnvironmentVariable("Path", "$userPath;$localBin", "User")
   $env:Path = "$env:Path;$localBin"
   Write-Host "added $localBin to user PATH (restart shells to pick it up)"
 }
-Write-Host "installed tack -> $localBin\tack"
+Write-Host "installed tack -> $localBin\tack (Git Bash), $localBin\tack.cmd (PowerShell/cmd)"
 
 foreach ($dep in @("bash", "jq", "git")) {
   if (-not (Get-Command $dep -ErrorAction SilentlyContinue)) {
@@ -100,4 +105,4 @@ foreach ($dep in @("bash", "jq", "git")) {
 if (-not (Get-Command python3 -ErrorAction SilentlyContinue) -and -not (Get-Command python -ErrorAction SilentlyContinue)) {
   Write-Host "WARN: no python on PATH; the ghost prose hooks will skip."
 }
-Write-Host "done. Next (from Git Bash): tack install dev"
+Write-Host "done. Open a new PowerShell, then run: tack install dev"

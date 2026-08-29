@@ -21,7 +21,52 @@ stale() {  # stale <stampfile> -> 0 if older than the interval or absent
     [ "$(( now - last ))" -ge "$INTERVAL_SECONDS" ]
 }
 
+# A marketplace that ships a JS project and has lost node_modules makes its
+# session hook pay a cold `bun install` in front of the user. For claude-mem
+# that install has a 120s timeout, which is long enough to drop the client's
+# in-flight API connection: the session start fails with "API Error: Connection
+# error", and `/login` dies before a browser ever opens. Running
+# `npx claude-mem repair` by hand is what clears it, so that is what this does.
+
+# True when at least one enabled plugin comes from marketplace $1. Reads the
+# declared state out of settings.json rather than spawning `claude plugin list`,
+# because this runs ahead of the daily gate on every session start.
+marketplace_has_enabled_plugin() {
+    f='(.enabledPlugins // {}) | with_entries(select(.value)) | keys | any(endswith($m))'
+    jq -e --arg m "@$1" "$f" "$CLAUDE_DIR/settings.json" >/dev/null 2>&1
+}
+
+restore_marketplace_deps() {
+    for pj in "$HOME"/.claude/plugins/marketplaces/*/package.json; do
+        [ -f "$pj" ] || continue
+        d=$(dirname "$pj")
+        [ -d "$d/node_modules" ] && continue
+        # Nothing enabled from this marketplace, so nothing needs its runtime.
+        # The check sits after the node_modules stat so the normal case still
+        # costs one stat and no jq. Without it, disabling a plugin left this
+        # loop still paying its install every session: claude-mem stayed
+        # disabled and its npm install kept failing on Windows with ENOTEMPTY,
+        # which is a failure nobody could explain from the plugin list.
+        marketplace_has_enabled_plugin "$(basename "$d")" || continue
+        if [ "$(basename "$d")" = "thedotmack" ] && command -v npx >/dev/null 2>&1; then
+            npx -y claude-mem repair >/dev/null 2>&1 && continue
+        fi
+        (cd "$d" && { command -v bun >/dev/null 2>&1 && bun install --silent || npm install --silent; }) >/dev/null 2>&1 || true
+    done
+}
+
 now=$(date +%s)
+
+# Ahead of the daily gate on purpose, and the only part of this hook that runs
+# every session. Step 4 below re-extracts every marketplace clone WITHOUT its
+# install step, which is what deletes node_modules; step 4b puts it back. But
+# both stamps are written before their work runs, so a sweep that is killed
+# mid-run (this hook is async and explicitly safe to kill) leaves the machine
+# broken and gated shut for a full 24h. That window is where "I have to run
+# repair again" and the login failures come from. The guard below is a stat per
+# marketplace when nothing is wrong, so it is cheap enough to pay every time.
+restore_marketplace_deps
+
 stale "$STAMP" || exit 0
 echo "$now" > "$STAMP"
 
@@ -67,14 +112,17 @@ echo "$now" > "$SHARED_STAMP"
 # 3. Update marketplace indices
 claude plugin marketplace update >/dev/null 2>&1 || true
 
-# 4. Update all enabled plugins
-claude plugin list 2>/dev/null \
-    | grep -E "^  [❯>]|Status" \
-    | paste - - \
-    | grep "enabled" \
-    | sed 's/  [❯>] //' \
-    | awk '{print $1}' \
+# 4. Update all enabled plugins. Read the machine-readable list, not the human
+#    one: the old pipeline matched a multibyte prompt glyph inside a bracket
+#    expression, so under a non-UTF-8 locale it emitted that glyph as the plugin
+#    name and every update became a no-op. Third-party plugins then never moved,
+#    and the official ones only looked current because the marketplace refresh
+#    restamps them.
+claude plugin list --json 2>/dev/null \
+    | jq -r '.[] | select(.enabled) | .id' 2>/dev/null \
+    | tr -d '\r' \
     | while read -r plugin; do
+        [ -n "$plugin" ] || continue
         claude plugin update "$plugin" >/dev/null 2>&1 || true
     done
 
@@ -82,12 +130,14 @@ claude plugin list 2>/dev/null \
 # without running its install step, so any plugin shipping as a JS project loses
 # node_modules and pays a cold install inside a session hook later. Restore deps
 # now, in async background time, rather than in front of the user's next prompt.
-for pj in "$HOME"/.claude/plugins/marketplaces/*/package.json; do
-    [ -f "$pj" ] || continue
-    d=$(dirname "$pj")
-    [ -d "$d/node_modules" ] && continue
-    (cd "$d" && { command -v bun >/dev/null 2>&1 && bun install --silent || npm install --silent; }) >/dev/null 2>&1 || true
-done
+restore_marketplace_deps
 
-# 5. Update graphifyy
-pip install --upgrade graphifyy -q >/dev/null 2>&1 && graphify install >/dev/null 2>&1 || true
+# 5. Update graphifyy (uv-managed tool install; pip only if uv is unavailable)
+if command -v uv >/dev/null 2>&1; then
+    # [gemini] extra pulls in openai (Gemini's OpenAI-compat client); a plain
+    # upgrade drops it silently and semantic extraction fails at runtime.
+    uv tool install --upgrade "graphifyy[gemini]" -q >/dev/null 2>&1
+else
+    pip install --upgrade graphifyy -q >/dev/null 2>&1
+fi
+graphify install >/dev/null 2>&1 || true
