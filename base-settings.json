@@ -84,6 +84,16 @@
             "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/security-file-nudge.sh\" ]; then bash \"$c/hooks/security-file-nudge.sh\"; fi"
           }
         ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/capture-plan.sh\" ]; then bash \"$c/hooks/capture-plan.sh\"; fi",
+            "statusMessage": "Capturing plan to .agent/..."
+          }
+        ]
       }
     ],
     "SessionStart": [

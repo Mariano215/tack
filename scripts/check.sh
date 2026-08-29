@@ -76,6 +76,8 @@ done < <(grep -rn "jq -r" lib/ hooks/ scripts/ verify-setup.sh 2>/dev/null \
 bash scripts/sanitize-check.sh >/dev/null 2>&1 || { bash scripts/sanitize-check.sh; fail=1; }
 out="$(bash scripts/test-resolve-link-target.sh 2>&1)" || { echo "$out"; err "scripts/test-resolve-link-target.sh failed." "See the failing case above. It covers \$HARNESS_ROOT and ~/ expansion in skills_link."; }
 out="$(bash scripts/test-ghost-scope.sh 2>&1)" || { echo "$out"; err "scripts/test-ghost-scope.sh failed." "ghost must scan only client-facing document formats (.txt, .docx, .pdf). Putting .md back in scan_extensions makes every internal note able to block a write and cost a rewrite."; }
+out="$(bash scripts/test-skill-routes.sh 2>&1)" || { echo "$out"; err "scripts/test-skill-routes.sh failed." "A route in hooks/skill-routes.json changed behaviour. Fix the pattern, or if the new behaviour is intended, update the case table in scripts/test-skill-routes.sh. Routes are matched in file order and the first hit wins, so moving a route can steal another route's prompts."; }
+out="$(bash scripts/test-capture-plan.sh 2>&1)" || { echo "$out"; err "scripts/test-capture-plan.sh failed." "hooks/capture-plan.sh must write only when the repo already has a .agent/ directory, and must exit 0 on empty, malformed or rejected input. Restore the gate at the top of the hook."; }
 
 # 7b. Config-root parameterization. Two profiles now run side by side, each with
 #     its own CLAUDE_CONFIG_DIR (tack shell / tack tmux / tack herd). A path hardcoded

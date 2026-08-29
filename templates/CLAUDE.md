@@ -27,3 +27,14 @@ Goal-driven skills (/tdd /debug /build /pre-push /document) iterate under hard
 limits from `~/.claude/skills/goal-safety-config.json`. At iteration 4 without
 convergence they pause and offer to switch strategy or stop. When a hard limit
 is hit: stop, report progress and next steps, never claim success.
+
+# Project record: the .agent/ directory
+A repo that contains a `.agent/` directory collects its own paper trail. The
+approved plan is written there automatically when plan mode exits, and the
+end-of-session summary (work done, open branches, unfixed CRITICAL/HIGH
+security findings, next steps) is appended to `.agent/log.md`. Nothing is
+written to a repo without that directory, so `mkdir .agent` is how a project
+opts in. Write `.agent/intent.md` and `.agent/spec.md` by hand when the work
+needs them. Commit `.agent/` when the reasoning should ship with the code.
+These files are for handover, not for evidence: an unsigned git history is
+rewritable, so treat them as notes, not as an audit trail.
