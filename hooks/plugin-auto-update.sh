@@ -115,9 +115,11 @@ claude plugin marketplace update >/dev/null 2>&1 || true
 # 4. Update all enabled plugins. Read the machine-readable list, not the human
 #    one: the old pipeline matched a multibyte prompt glyph inside a bracket
 #    expression, so under a non-UTF-8 locale it emitted that glyph as the plugin
-#    name and every update became a no-op. Third-party plugins then never moved,
-#    and the official ones only looked current because the marketplace refresh
-#    restamps them.
+#    name and every update became a no-op. Third-party plugins then never moved
+#    (claude-mem sat on 13.7.0 for two months while npx claude-mem repair kept
+#    installing 13.15.2 into a cache dir Claude Code did not load), and the
+#    official ones only looked current because the marketplace refresh restamps
+#    them.
 claude plugin list --json 2>/dev/null \
     | jq -r '.[] | select(.enabled) | .id' 2>/dev/null \
     | tr -d '\r' \

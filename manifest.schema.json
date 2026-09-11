@@ -1,12 +1,38 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "tack profile manifest",
+  "title": "harness profile manifest",
   "type": "object",
   "required": [
     "name"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": 2
+          }
+        },
+        "required": [
+          "schema_version"
+        ]
+      },
+      "then": {
+        "required": [
+          "providers"
+        ]
+      }
+    }
+  ],
   "additionalProperties": true,
   "properties": {
+    "schema_version": {
+      "enum": [
+        1,
+        2
+      ],
+      "description": "Manifest contract version. Missing means v1. v1 keeps runtime fields at top level; v2 moves runtime fields below providers."
+    },
     "name": {
       "type": "string",
       "description": "profile id, matches repo suffix tack-<name>"
@@ -41,7 +67,7 @@
     },
     "plugins": {
       "type": "object",
-      "description": "enabledPlugins deltas merged over the core baseline; key is <plugin>@<marketplace>, value true/false",
+      "description": "v1 Claude enabledPlugins deltas merged over the core baseline; v2 manifests use providers.claude.plugins",
       "additionalProperties": {
         "type": "boolean"
       }
@@ -51,7 +77,7 @@
       "items": {
         "type": "string"
       },
-      "description": "MCP servers this profile wants. Plugin-provided (context7, chrome-devtools, playwright) ride enabledPlugins; only 'atlassian' is added/removed explicitly. tokensave and sequential-thinking are always dropped (tokensave has a CLI; native reasoning covers sequential-thinking)."
+      "description": "MCP servers this profile wants. Plugin-provided (context7, chrome-devtools, playwright) ride enabledPlugins. Explicitly added servers live in the MCP_TABLE in lib/apply-profile.sh: atlassian and scrapling. tokensave and sequential-thinking are always dropped (tokensave has a CLI; native reasoning covers sequential-thinking)."
     },
     "skills_link": {
       "type": "object",
@@ -60,14 +86,87 @@
         "type": "string"
       }
     },
+    "skills_source": {
+      "type": "object",
+      "description": "where a skills_link target comes from when it is missing; key is the skill name (must also appear in skills_link), value is the package the `skills` CLI knows it by, e.g. \"vercel-labs/skills@find-skills\". A package spec only, never a command: apply-profile drops it into a fixed argv (`skills add <spec> -g -y`) after a charset check, so a manifest can never run arbitrary code on a machine that syncs it. A skills_link entry with no source here is skipped exactly as before. Set HARNESS_NO_SKILL_INSTALL=1 to turn the installs off on one machine.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "env": {
       "type": "object",
+      "description": "v1 Claude environment deltas; v2 manifests use providers.claude.env",
       "additionalProperties": {
         "type": "string"
       }
     },
     "notes": {
       "type": "string"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Shared skill names requested by this profile. Reserved for v2 adapter composition; core skills remain implicit during migration."
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "engine": {
+          "enum": [
+            "claude-mem",
+            "native",
+            "none"
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "description": "Shared memory intent. Provider adapters decide installation and runtime-specific config."
+    },
+    "providers": {
+      "type": "object",
+      "properties": {
+        "claude": {
+          "$ref": "#/$defs/provider"
+        },
+        "codex": {
+          "$ref": "#/$defs/provider"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Runtime-specific config for v2 manifests."
+    }
+  },
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "properties": {
+        "plugins": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

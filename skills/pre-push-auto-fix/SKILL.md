@@ -31,16 +31,12 @@ Claude should automatically use this skill when:
 
 ---
 
-## Safety Configuration
+## Retry ceiling
 
-**MANDATORY SAFETY LIMITS** (loaded from `~/.claude/skills/goal-safety-config.json`):
-- **Max Iterations:** 3 (VERY CONSERVATIVE)
-- **Timeout:** 10m (VERY SHORT)
-- **Rationale:** Fail fast before push - if it needs more than 3 fixes, manual review required
-
-**Philosophy:** Pre-push should be quick checks + auto-fixes for trivial issues. Complex problems should fail fast and require manual investigation.
-
-These limits are **NON-NEGOTIABLE**.
+Stop after 3 rounds of fixes. Pre-push is quick checks plus trivial
+auto-fixes; anything needing a fourth round needs a human looking at it. If it
+is still not clean, stop and report what is failing and what you tried. Never
+claim success at the ceiling.
 
 ---
 
@@ -71,7 +67,7 @@ These limits are **NON-NEGOTIABLE**.
 ### Phase 2: Auto-Fix Mode (if --auto-fix)
 6. If any checks fail AND `--auto-fix` flag present:
    ```bash
-   /goal "all quality checks pass" --max-iterations 3 --timeout 10m
+   /goal lint, format, typecheck, tests and build all exit 0 with no source file changed beyond the auto-fixes, or stop after 3 turns
    ```
 7. **Auto-fixable issues:**
    - Linting errors (auto-fix with --fix)
@@ -235,7 +231,7 @@ Claude automatically invokes pre-push-auto-fix:
    - Lint: ❌ 5 errors
    - Format: ❌ 12 files need formatting
 
-2. Uses /goal with --auto-fix (3 iterations max)
+2. Sets a /goal bounded to 3 turns
 
 3. Iteration 1:
    - Runs: npm run lint --fix
@@ -289,15 +285,3 @@ Claude automatically invokes pre-push-auto-fix:
 - Prevents pushing broken code
 - Can be integrated with actual git hooks
 - Combines automation with strict quality gates
-
----
-
-## Escalation (iteration 4)
-
-At iteration 4 without convergence (or at this skill's own limit when lower), pause. Summarize the attempts so far and the current hypothesis, then present three options and wait for the user's choice:
-
-1. Switch strategy: new hypothesis, different approach.
-2. Hand off to the built-in /loop for self-paced retries. REQUIRES an explicit user go. Token-expensive; never start /loop on your own.
-3. Stop and report findings.
-
-Hard limits in goal-safety-config.json still apply and override everything.

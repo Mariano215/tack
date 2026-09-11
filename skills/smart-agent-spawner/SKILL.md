@@ -34,7 +34,7 @@ Task characteristics:
 - Performance optimization requiring deep analysis
 - Migration planning between technologies
 
-Cost: Opus 4.8 is $5/$25 per MTok vs Sonnet 5's $3/$15, so roughly 1.7x, not the 5x gap older models had. Opus is also the default session model. Don't downgrade a spawn to save cost unless the task is genuinely mechanical.
+Cost: the Opus tier runs roughly 1.7x Sonnet 5's $3/$15 per MTok, not the 5x gap older models had. Opus is also the default session model. Don't downgrade a spawn to save cost unless the task is genuinely mechanical.
 
 ### Sonnet, balanced, default choice
 
@@ -89,10 +89,44 @@ Default is `high` when unset. `xhigh` sits between `high` and `max`.
 
 - Haiku tier: omit effort. Haiku 4.5 rejects the parameter outright.
 - Sonnet 5 tier: omit effort (inherits session default) for routine work. Supports the full range up to `max`.
-- Opus tier: use `xhigh` for coding and agentic work. It is the best setting for those on Opus 4.8 and Sonnet 5, and Claude Code's own default. Use `high` for other intelligence-sensitive work. Reserve `max` for the hardest verify/judge calls, where correctness outweighs cost; it can show diminishing returns and overthink.
-- `low` and `medium`: short scoped tasks, mechanical stages, latency-sensitive work. Current models respect low effort strictly and scope work to exactly what was asked, so raise the tier rather than prompting around shallow reasoning.
+- Opus 5 tier: start at `high`, which is the default and the same as omitting the
+  parameter. Step up to `xhigh` for demanding coding and agentic work, and to `max`
+  only when the task justifies unconstrained spending. Step down to `low` or `medium`
+  freely: on Opus 5 those levels hold quality on most work and are the primary control
+  for token cost and latency.
+- `low` and `medium`: short scoped tasks, mechanical stages, latency-sensitive work.
+  Current models respect low effort strictly and scope work to exactly what was asked,
+  so raise the tier rather than prompting around shallow reasoning.
 
-At `xhigh` or `max`, give the agent room in its output budget. Adaptive thinking can consume a large share of it, and a tight budget yields a response that is mostly thinking followed by a truncated answer.
+Opus 4.8 wanted `xhigh` as the starting point for coding and agentic work. Opus 5 does
+not. If a caller still pins `xhigh` by default it is carrying a 4.8 setting forward, and
+Anthropic's guidance is to re-measure rather than reuse it.
+
+Effort controls how much the agent thinks, not how long its visible answer is. On Opus 5,
+lowering effort does not reliably shorten the reply. If a spawned agent returns more prose
+than the caller needs, say so in the prompt instead of dropping effort.
+
+At `xhigh` or `max`, give the agent room in its output budget. Adaptive thinking can
+consume a large share of it, and a tight budget yields a response that is mostly thinking
+followed by a truncated answer. Opus 5 also refuses to run with thinking disabled at
+`xhigh` or `max`; that combination returns a 400 error.
+
+## When Not To Spawn At All
+
+Opus 5 delegates more readily than earlier models, so the cheapest win here is usually
+not picking a better tier, it is not spawning. Delegation multiplies cost and wall-clock
+time, and on small work it loses to doing the job directly.
+
+Spawn only when the work is large, genuinely independent, and parallelizable, such as a
+wide multi-file investigation or several unrelated review dimensions. Do not spawn for
+work you can finish in a handful of tool calls. Do not spawn an agent to verify or
+double-check your own output: Opus 5 already checks its own work, and a verifier agent
+adds cost without adding accuracy. If one agent can do the job, use one, not three.
+
+The deterministic backstop is two environment variables, `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`
+and `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (Claude Code 2.1.217 or later). The harness sets
+both in `base-settings.json`. They cap the blast radius; they are not a substitute for
+deciding not to delegate.
 
 ## Context-Based Model Selection
 
@@ -114,7 +148,7 @@ Respect user preferences: if the user names a model or effort explicitly, honor 
 
 ## Retry and Escalation on Failure
 
-Modeled on `goal-safety-config.json`'s iteration/escalation pattern, don't invent a different one.
+Modeled on the retry ceilings the goal-driven skills state, don't invent a different pattern.
 
 1. Attempt 1 uses the tier chosen by the rules above.
 2. On failure (subagent errors, or its output fails the caller's own check): escalate one tier (haiku to sonnet, sonnet to opus) and raise effort one step, then retry.

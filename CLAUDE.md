@@ -75,6 +75,12 @@ into the config dir. `lib/` is never copied, so nothing in `lib/` can be shared
 with an installed script. A profile repo contributes only its `skills/` and its
 manifest.
 
+The Codex adapter (`adapters/codex/`) writes `$CODEX_HOME/<name>.config.toml`,
+a marked block in `AGENTS.md`, its skills under `$CODEX_HOME/skills` (backing
+up a collision first) and `.harness-active`. It never writes the base
+`config.toml` itself; the Codex CLI does, when it registers the repo
+marketplace and plugin.
+
 ## Style
 
 Conventional commits. No em-dashes or en-dashes anywhere, prose or comments.

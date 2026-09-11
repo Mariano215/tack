@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-shell-aliases.sh: idempotently write the yolo-mode alias into every rc
+# setup-shell-aliases.sh: idempotently write harness wrappers into every rc
 # file present (~/.zshrc, ~/.bashrc, covering macOS and Ubuntu). Plain
 # `claude`, no proxy wrap.
 # Windows equivalent: setup-core.ps1.
@@ -43,6 +43,26 @@ trap 'rm -f "$BLOCK_FILE"' EXIT
 {
   echo "$START"
   [ "$NO_API_KEY" = 1 ] && echo 'function claude() { ANTHROPIC_API_KEY="" command claude "$@"; }'
+  # codex reads the active tack profile unless the caller names one.
+  cat <<'CODEXFN'
+function codex() {
+  local harness_arg harness_active_file harness_profile
+  for harness_arg in "$@"; do
+    case "$harness_arg" in
+      -p|--profile|--profile=*) command codex "$@"; return ;;
+    esac
+  done
+  harness_active_file="${CODEX_HOME:-$HOME/.codex}/.harness-active"
+  if [ -f "$harness_active_file" ]; then
+    harness_profile="$(cat "$harness_active_file" 2>/dev/null | tr -d '\r\n')"
+    if [ -n "$harness_profile" ] && [ -f "${CODEX_HOME:-$HOME/.codex}/$harness_profile.config.toml" ]; then
+      command codex -p "$harness_profile" "$@"
+      return
+    fi
+  fi
+  command codex "$@"
+}
+CODEXFN
   if [ "$YOLO_ALIAS" = 1 ]; then
     echo "alias $ALIAS_NAME='claude --dangerously-skip-permissions'"
   else

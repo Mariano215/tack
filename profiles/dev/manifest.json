@@ -1,19 +1,28 @@
 {
+  "schema_version": 2,
   "name": "dev",
   "description": "Full-stack engineering, agentic + security focus (primary)",
   "caveman": "off",
-  "plugins": {
-    "superpowers@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "plugin-dev@claude-plugins-official": true,
-    "frontend-slides@frontend-slides": true,
-    "security-guidance@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true
-  },
   "mcp": [],
-  "env": {},
+  "memory": {
+    "enabled": false
+  },
+  "providers": {
+    "claude": {
+      "plugins": {
+        "superpowers@claude-plugins-official": true,
+        "feature-dev@claude-plugins-official": true,
+        "pyright-lsp@claude-plugins-official": true,
+        "typescript-lsp@claude-plugins-official": true,
+        "plugin-dev@claude-plugins-official": true,
+        "frontend-slides@frontend-slides": true,
+        "security-guidance@claude-plugins-official": true,
+        "code-review@claude-plugins-official": true,
+        "commit-commands@claude-plugins-official": true
+      },
+      "env": {}
+    },
+    "codex": {}
+  },
   "notes": "Primary engineering profile. Add your own skills to this profile repo's skills/."
 }

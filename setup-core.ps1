@@ -61,6 +61,27 @@ function Install-ClaudeAliases {
   $block = @"
 $marker
 function claude-code { `$env:ANTHROPIC_API_KEY = ''; claude --dangerously-skip-permissions @args }
+function codex {
+  `$codexExe = (Get-Command codex -CommandType Application -ErrorAction Stop).Source
+  `$hasProfile = `$false
+  foreach (`$harnessArg in `$args) {
+    if (`$harnessArg -eq '-p' -or `$harnessArg -eq '--profile' -or `$harnessArg -like '--profile=*') {
+      `$hasProfile = `$true
+    }
+  }
+  if (`$hasProfile) { & `$codexExe @args; return }
+  `$codexDir = if (`$env:CODEX_HOME) { `$env:CODEX_HOME } else { Join-Path `$env:USERPROFILE '.codex' }
+  `$activeFile = Join-Path `$codexDir '.harness-active'
+  if (Test-Path `$activeFile) {
+    `$harnessProfile = (Get-Content `$activeFile -Raw).Trim()
+    `$profileFile = Join-Path `$codexDir "`$harnessProfile.config.toml"
+    if (`$harnessProfile -and (Test-Path `$profileFile)) {
+      & `$codexExe -p `$harnessProfile @args
+      return
+    }
+  }
+  & `$codexExe @args
+}
 function tack { & "`$env:USERPROFILE\.local\bin\tack.cmd" @args }
 $endMarker
 "@
@@ -90,6 +111,7 @@ New-Item -ItemType Directory -Force -Path $localBin | Out-Null
 Copy-Item "$coreDir\bin\tack" "$localBin\tack" -Force
 Copy-Item "$coreDir\bin\tack.cmd" "$localBin\tack.cmd" -Force
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+Copy-Item "$coreDir\bin\tack.cmd" "$localBin\tack.cmd" -Force
 if ($userPath -notlike "*$localBin*") {
   [Environment]::SetEnvironmentVariable("Path", "$userPath;$localBin", "User")
   $env:Path = "$env:Path;$localBin"

@@ -211,7 +211,11 @@ Path('graphify-out/.graphify_semantic.json').write_text(json.dumps({'nodes':[],'
 "
 ```
 
-**MANDATORY: You MUST use the Agent tool here. Reading files yourself one-by-one is forbidden - it is 5-10x slower. If you do not use the Agent tool you are doing this wrong.**
+Use the Agent tool for this step. Semantic extraction is a wide sweep over many
+independent files, which is the case delegation is actually for: the agents run in
+parallel, so reading the files yourself one at a time is roughly 5 to 10 times slower
+for the same result. This is the exception to the usual rule of not delegating, so
+keep the agent count to the estimate below rather than spawning more.
 
 Before dispatching subagents, print a timing estimate:
 - Load `total_words` and file counts from `graphify-out/.graphify_detect.json`

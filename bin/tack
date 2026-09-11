@@ -14,6 +14,7 @@ CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # The machine-wide config dir, which stays the source of truth for state that is
 # shared across profiles: the plugins tree, the login, the overrides below.
 SHARED_CLAUDE="$HOME/.claude"  # harness:shared
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 ROOT_FILE="$HOME/.claude/.harness-root"
 HARNESS_ROOT="$( [ -f "$ROOT_FILE" ] && cat "$ROOT_FILE" || echo "$HOME/Projects" )"
 ACTIVE_FILE="$CLAUDE_DIR/.harness-active"
@@ -30,15 +31,116 @@ SHARED_LINKS=".harness-skills-keep .harness-marketplaces-keep personal-overrides
 
 repo_dir() { echo "$HARNESS_ROOT/${PREFIX}$1"; }
 
+print_help() {
+  cat <<'EOF'
+tack - apply harness profiles and open isolated agent workspaces
+
+Usage:
+  tack <command> [options]
+
+Profile commands:
+  tack list                    Show installed profiles and active runtimes.
+  tack use <profile>           Apply one profile to every installed runtime.
+  tack install <profile>       Clone a missing profile, then apply it.
+  tack sync [--push]           Update core and profile repos, then re-apply.
+  tack status                  Show active profiles and configured runtime state.
+
+Workspace commands:
+  tack open <profile>          Open both installed agents in one workspace.
+  tack shell <profile>         Enter an isolated Claude shell in this terminal.
+  tack tmux <profile>          Open the legacy isolated Claude tmux session.
+  tack herd <profile>          Open the legacy isolated Claude Herdr workspace.
+
+Common open options:
+  --claude                   Start only Claude.
+  --codex                    Start only Codex.
+  --both                     Start both; this is the default.
+  --tmux                     Use tmux; this is the default outside Herdr.
+  --herdr                    Use Herdr from inside a Herdr-managed pane.
+  --cwd <directory>          Start every pane in this directory.
+  --detach                   Create the workspace without attaching to it.
+  --dry-run                  Print the plan without applying or starting anything.
+
+Sync option:
+  --push                     Publish reviewed core-pin commits after syncing.
+                             Without it, tack still publishes a newly created pin
+                             when that pin is the only unpushed commit.
+
+Help:
+  tack --help                  Show this guide.
+  tack open --help             Show detailed workspace examples and behavior.
+
+Examples:
+  tack use dev                 Apply dev, then launch claude or codex yourself.
+  tack open dev                Open Claude and Codex in the available workspace UI.
+  tack open web --codex        Open only Codex with the web profile.
+  tack open audit --cwd .      Open both agents in the current directory.
+  tack open dev --dry-run      Preview profile and pane commands safely.
+EOF
+}
+
+print_open_help() {
+  cat <<'EOF'
+tack open - prepare a profile and open isolated agent panes
+
+Usage:
+  tack open <profile> [--claude|--codex|--both]
+                    [--tmux|--herdr]
+                    [--cwd <directory>] [--detach] [--dry-run]
+
+What it does:
+  1. Reuses an existing workspace with the same name when one exists.
+  2. Applies the profile before starting any new agent.
+  3. Gives Claude its own CLAUDE_CONFIG_DIR.
+  4. Starts Codex with an explicit -p <profile> overlay.
+  5. Opens one pane per selected and installed agent.
+
+Defaults:
+  Both installed agents. Herdr when already inside it, otherwise tmux.
+  Current directory. Attach or focus now.
+  When only one agent is installed, default --both starts that agent and says
+  which runtime was skipped. Explicit --claude or --codex fails if missing.
+
+Options:
+  --claude            Select only Claude.
+  --codex             Select only Codex.
+  --both              Select both installed agents.
+  --tmux              Create or attach to a tmux session.
+  --herdr             Create or focus a Herdr workspace. Run this option from
+                      inside Herdr so workspace and pane IDs are unambiguous.
+  --cwd <directory>   Use this working directory in every agent pane.
+  --detach            Create the workspace and return to the current shell.
+  --dry-run           Validate inputs and print actions without changing state.
+  -h, --help          Show this help.
+
+Workspace names:
+  tack-dev              Both agents using profile dev.
+  tack-dev-claude       Claude-only dev workspace.
+  tack-dev-codex        Codex-only dev workspace.
+
+Examples:
+  tack open dev
+  tack open dev --codex --cwd ~/Projects/my-app
+  tack open web --both --tmux --detach
+  tack open audit --herdr --dry-run
+EOF
+}
+
 cmd_list() {
-  local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo none )"
-  echo "harness root: $HARNESS_ROOT   active: $active${CLAUDE_CONFIG_DIR:+   config: $CLAUDE_CONFIG_DIR}"
+  local claude_active codex_active
+  claude_active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo none )"
+  codex_active="$( [ -f "$CODEX_DIR/.harness-active" ] && cat "$CODEX_DIR/.harness-active" || echo none )"
+  echo "harness root: $HARNESS_ROOT${CLAUDE_CONFIG_DIR:+   Claude config: $CLAUDE_CONFIG_DIR}"
+  echo "active: Claude=$claude_active   Codex=$codex_active"
   for d in "$HARNESS_ROOT"/"$PREFIX"*; do
     [ -d "$d" ] || continue
     local n="${d##*/$PREFIX}"
     [ "$n" = "core" ] && continue
-    printf '  %s %s\n' "$( [ "$n" = "$active" ] && echo '*' || echo ' ' )" "$n"
+    printf '  %s%s %s\n' \
+      "$( [ "$n" = "$claude_active" ] && echo C || echo ' ' )" \
+      "$( [ "$n" = "$codex_active" ] && echo X || echo ' ' )" "$n"
   done
+  echo "  key: C=Claude, X=Codex"
 }
 
 cmd_use() {
@@ -51,13 +153,377 @@ cmd_use() {
   local log="$CLAUDE_DIR/.harness-apply.log"
   local rc
   { echo "=== $(date '+%Y-%m-%d %H:%M:%S') tack use $name"; } >> "$log" 2>/dev/null || true
-  ( cd "$dir" && git submodule update --init --quiet 2>/dev/null; bash ./install.sh ) 2>&1 | tee -a "$log"
+  (
+    cd "$dir" || exit 1
+    git submodule update --init --quiet 2>/dev/null || true
+
+    provider_count=0
+    if command -v claude >/dev/null 2>&1; then
+      provider_count=$((provider_count + 1))
+      echo "== provider: Claude =="
+      bash ./install.sh
+      provider_rc=$?
+      if [ "$provider_rc" -ne 0 ]; then
+        echo "tack: Claude apply failed for profile '$name' (exit $provider_rc)." >&2
+        exit "$provider_rc"
+      fi
+    else
+      echo "== provider: Claude (CLI absent, skipped) =="
+    fi
+
+    if [ "$CLAUDE_DIR" != "$SHARED_CLAUDE" ]; then
+      echo "== provider: Codex (isolated Claude context, skipped) =="
+      echo "  Codex profile state is global. Use normal 'tack use $name' or launch 'codex -p $name'."
+    elif command -v codex >/dev/null 2>&1; then
+      provider_count=$((provider_count + 1))
+      echo "== provider: Codex =="
+      if [ ! -f ./core/adapters/codex/apply-profile.sh ]; then
+        echo "tack: Codex adapter missing from profile '$name' pinned core." >&2
+        echo "  Fix: tack sync --push, then retry." >&2
+        exit 1
+      fi
+      bash ./core/adapters/codex/apply-profile.sh ./manifest.json
+      provider_rc=$?
+      if [ "$provider_rc" -ne 0 ]; then
+        echo "tack: Codex apply failed for profile '$name' (exit $provider_rc)." >&2
+        exit "$provider_rc"
+      fi
+    else
+      echo "== provider: Codex (CLI absent, skipped) =="
+    fi
+    if [ "$provider_count" -eq 0 ]; then
+      echo "tack: neither Claude nor Codex CLI is installed; nothing applied." >&2
+      exit 1
+    fi
+  ) 2>&1 | tee -a "$log"
   rc=${PIPESTATUS[0]}
   if [ "$rc" -ne 0 ]; then
     echo "tack: apply failed for profile '$name' (exit $rc, see $log)." >&2
     echo "  The harness may be half-applied. Re-run: tack use $name" >&2
   fi
   return "$rc"
+}
+
+shell_join() {
+  local result="" word quoted
+  for word in "$@"; do
+    printf -v quoted '%q' "$word"
+    result="${result:+$result }$quoted"
+  done
+  printf '%s' "$result"
+}
+
+open_attach_tmux() {
+  local session="$1"
+  if [ -n "${TMUX:-}" ]; then
+    exec tmux switch-client -t "$session"
+  fi
+  exec tmux attach-session -t "$session"
+}
+
+herdr_find_workspace() {
+  local label="$1"
+  herdr workspace list 2>/dev/null | jq -r --arg label "$label" '
+    [.result.workspaces[]? | select(.label == $label) | .workspace_id][0] // empty
+  ' | tr -d '\r'
+}
+
+herdr_first_pane() {
+  local workspace="$1"
+  herdr pane list --workspace "$workspace" 2>/dev/null | jq -r '
+    [.result.panes[]?.pane_id][0] // empty
+  ' | tr -d '\r'
+}
+
+herdr_new_pane_id() {
+  jq -r '
+    .result.pane.pane_id //
+    .result.new_pane.pane_id //
+    .result.pane_id //
+    empty
+  ' 2>/dev/null | tr -d '\r'
+}
+
+open_create_herdr() {
+  local session="$1" workdir="$2" cfg="$3"
+  local want_claude="$4" want_codex="$5" actual_selection="$6" detach="$7"
+  local claude_command="$8" codex_command="$9"
+  local create_output workspace first second="" split_output
+  local -a create_args
+  create_args=(workspace create --cwd "$workdir" --label "$session")
+  if [ "$want_claude" -eq 1 ]; then
+    create_args+=(--env "CLAUDE_CONFIG_DIR=$cfg" --env "CLAUDE_SECURESTORAGE_CONFIG_DIR=")
+  fi
+  if [ "$detach" -eq 1 ]; then create_args+=(--no-focus); else create_args+=(--focus); fi
+
+  if ! create_output="$(herdr "${create_args[@]}")"; then
+    echo "tack open: Herdr workspace creation failed; no agent started." >&2
+    return 1
+  fi
+  workspace="$(printf '%s' "$create_output" | jq -r '
+    .result.workspace.workspace_id // .result.workspace_id // empty
+  ' 2>/dev/null | tr -d '\r')"
+  [ -n "$workspace" ] || workspace="$(herdr_find_workspace "$session")"
+  if [ -z "$workspace" ]; then
+    echo "tack open: Herdr created a workspace but returned no workspace ID." >&2
+    return 1
+  fi
+
+  first="$(herdr_first_pane "$workspace")"
+  if [ -z "$first" ]; then
+    herdr workspace close "$workspace" >/dev/null 2>&1 || true
+    echo "tack open: Herdr workspace had no pane; incomplete workspace removed." >&2
+    return 1
+  fi
+
+  if [ "$want_claude" -eq 1 ] && [ "$want_codex" -eq 1 ]; then
+    if ! split_output="$(herdr pane split "$first" --direction right --ratio 0.5 --cwd "$workdir" --no-focus)"; then
+      herdr workspace close "$workspace" >/dev/null 2>&1 || true
+      echo "tack open: Herdr pane split failed; incomplete workspace removed." >&2
+      return 1
+    fi
+    second="$(printf '%s' "$split_output" | herdr_new_pane_id)"
+    if [ -z "$second" ]; then
+      second="$(herdr pane list --workspace "$workspace" 2>/dev/null | jq -r --arg first "$first" '
+        [.result.panes[]?.pane_id | select(. != $first)][0] // empty
+      ' | tr -d '\r')"
+    fi
+    if [ -z "$second" ]; then
+      herdr workspace close "$workspace" >/dev/null 2>&1 || true
+      echo "tack open: Herdr split returned no new pane ID; incomplete workspace removed." >&2
+      return 1
+    fi
+    herdr pane rename "$first" "Claude $session" >/dev/null 2>&1 || true
+    herdr pane rename "$second" "Codex $session" >/dev/null 2>&1 || true
+    if ! herdr pane run "$first" "$claude_command" >/dev/null \
+      || ! herdr pane run "$second" "$codex_command" >/dev/null; then
+      herdr workspace close "$workspace" >/dev/null 2>&1 || true
+      echo "tack open: Herdr agent launch failed; incomplete workspace removed." >&2
+      return 1
+    fi
+  elif [ "$want_claude" -eq 1 ]; then
+    herdr pane rename "$first" "Claude $session" >/dev/null 2>&1 || true
+    if ! herdr pane run "$first" "$claude_command" >/dev/null; then
+      herdr workspace close "$workspace" >/dev/null 2>&1 || true
+      echo "tack open: Claude launch failed; incomplete workspace removed." >&2
+      return 1
+    fi
+  else
+    herdr pane rename "$first" "Codex $session" >/dev/null 2>&1 || true
+    if ! herdr pane run "$first" "$codex_command" >/dev/null; then
+      herdr workspace close "$workspace" >/dev/null 2>&1 || true
+      echo "tack open: Codex launch failed; incomplete workspace removed." >&2
+      return 1
+    fi
+  fi
+
+  echo "tack open: Herdr workspace '$session' ready ($actual_selection)"
+  [ "$detach" -eq 1 ] && echo "  focus: herdr workspace focus $workspace"
+  return 0
+}
+
+cmd_open() {
+  case "${1:-}" in
+    -h|--help) print_open_help; return 0 ;;
+    "") echo "tack open: profile required. Try: tack open --help" >&2; return 2 ;;
+    -*) echo "tack open: profile must come before options. Try: tack open --help" >&2; return 2 ;;
+  esac
+
+  local name="$1" selection="both" selection_set=0 mux="auto" mux_set=0
+  local workdir="$(pwd)" detach=0 dry_run=0 arg
+  case "$name" in
+    *[!A-Za-z0-9._-]*|"")
+      echo "tack open: invalid profile name '$name'. Use letters, numbers, dot, underscore, or hyphen." >&2
+      return 2
+      ;;
+  esac
+  shift
+  while [ "$#" -gt 0 ]; do
+    arg="$1"
+    case "$arg" in
+      --claude|--codex|--both)
+        local next_selection="${arg#--}"
+        if [ "$selection_set" -eq 1 ] && [ "$selection" != "$next_selection" ]; then
+          echo "tack open: choose one of --claude, --codex, or --both." >&2
+          return 2
+        fi
+        selection="$next_selection"; selection_set=1
+        ;;
+      --tmux|--herdr)
+        local next_mux="${arg#--}"
+        if [ "$mux_set" -eq 1 ] && [ "$mux" != "$next_mux" ]; then
+          echo "tack open: choose one of --tmux or --herdr." >&2
+          return 2
+        fi
+        mux="$next_mux"; mux_set=1
+        ;;
+      --cwd)
+        shift
+        [ "$#" -gt 0 ] || { echo "tack open: --cwd needs a directory." >&2; return 2; }
+        workdir="$1"
+        ;;
+      --detach) detach=1 ;;
+      --dry-run) dry_run=1 ;;
+      -h|--help) print_open_help; return 0 ;;
+      *) echo "tack open: unknown option '$arg'. Try: tack open --help" >&2; return 2 ;;
+    esac
+    shift
+  done
+
+  require_profile "$name" open || return 1
+  [ -d "$workdir" ] || { echo "tack open: working directory not found: $workdir" >&2; return 1; }
+  # macOS exposes /var as a symlink to /private/var. tmux reports the physical
+  # pane path, so resolve once here and keep help, dry-run, and runtime output
+  # on the same representation.
+  workdir="$(cd "$workdir" && pwd -P)"
+
+  if [ "$mux" = "auto" ]; then
+    if [ "${HERDR_ENV:-}" = "1" ]; then mux="herdr"; else mux="tmux"; fi
+  fi
+
+  local have_claude=0 have_codex=0 want_claude=0 want_codex=0
+  local claude_bin="" codex_bin=""
+  if command -v claude >/dev/null 2>&1; then
+    have_claude=1
+    claude_bin="$(type -P claude 2>/dev/null || command -v claude)"
+  fi
+  if command -v codex >/dev/null 2>&1; then
+    have_codex=1
+    codex_bin="$(type -P codex 2>/dev/null || command -v codex)"
+  fi
+  case "$selection" in
+    claude)
+      [ "$have_claude" -eq 1 ] || { echo "tack open: Claude CLI is not installed." >&2; return 1; }
+      want_claude=1
+      ;;
+    codex)
+      [ "$have_codex" -eq 1 ] || { echo "tack open: Codex CLI is not installed." >&2; return 1; }
+      want_codex=1
+      ;;
+    both)
+      want_claude="$have_claude"; want_codex="$have_codex"
+      [ "$have_claude" -eq 1 ] || echo "tack open: Claude CLI absent, opening Codex only."
+      [ "$have_codex" -eq 1 ] || echo "tack open: Codex CLI absent, opening Claude only."
+      if [ "$want_claude" -eq 0 ] && [ "$want_codex" -eq 0 ]; then
+        echo "tack open: neither Claude nor Codex CLI is installed." >&2
+        return 1
+      fi
+      ;;
+  esac
+
+  local actual_selection session="tack-$name"
+  if [ "$want_claude" -eq 1 ] && [ "$want_codex" -eq 1 ]; then
+    actual_selection="both"
+  elif [ "$want_claude" -eq 1 ]; then
+    actual_selection="claude"; session="$session-claude"
+  else
+    actual_selection="codex"; session="$session-codex"
+  fi
+
+  local cfg="$PROFILE_HOME/$name"
+  local claude_command="" codex_command=""
+  # Herdr creates pane shells through its server, whose PATH can differ from
+  # this shell. Embed the resolved binaries and provider homes so every mux
+  # launches exactly the runtimes that passed detection and preflight here.
+  if [ "$want_claude" -eq 1 ]; then
+    claude_command="$(shell_join env \
+      "CLAUDE_CONFIG_DIR=$cfg" \
+      "CLAUDE_SECURESTORAGE_CONFIG_DIR=" \
+      "ANTHROPIC_API_KEY=" \
+      "$claude_bin")"
+  fi
+  if [ "$want_codex" -eq 1 ]; then
+    codex_command="$(shell_join env "CODEX_HOME=$CODEX_DIR" "$codex_bin" -p "$name" -C "$workdir")"
+  fi
+
+  if [ "$dry_run" -eq 1 ]; then
+    echo "tack open dry run"
+    echo "  profile: $name"
+    echo "  agents: $actual_selection"
+    echo "  multiplexer: $mux"
+    echo "  workspace: $session"
+    echo "  working directory: $workdir"
+    [ "$want_claude" -eq 1 ] && echo "  Claude pane: $claude_command"
+    [ "$want_codex" -eq 1 ] && echo "  Codex pane: $codex_command"
+    echo "  no config or workspace changed"
+    return 0
+  fi
+
+  if [ "$mux" = "herdr" ]; then
+    [ "${HERDR_ENV:-}" = "1" ] || {
+      echo "tack open: --herdr must run from a Herdr-managed pane (HERDR_ENV=1)." >&2
+      echo "  No workspace changed. Start Herdr, then run this command inside a pane." >&2
+      return 1
+    }
+    command -v herdr >/dev/null 2>&1 || { echo "tack open: Herdr CLI is not installed." >&2; return 1; }
+    local existing_workspace; existing_workspace="$(herdr_find_workspace "$session")"
+    if [ -n "$existing_workspace" ]; then
+      echo "tack open: reusing existing Herdr workspace '$session'"
+      [ "$detach" -eq 1 ] || herdr workspace focus "$existing_workspace" >/dev/null
+      return $?
+    fi
+  else
+    command -v tmux >/dev/null 2>&1 || { echo "tack open: tmux is not installed." >&2; return 1; }
+    if tmux has-session -t "$session" 2>/dev/null; then
+      echo "tack open: attaching existing tmux session '$session'"
+      [ "$detach" -eq 1 ] && return 0
+      open_attach_tmux "$session"
+    fi
+  fi
+
+  local dir; dir="$(repo_dir "$name")"
+  if [ "$want_claude" -eq 1 ]; then
+    cfg="$(prep_profile_dir "$name")"
+    ( export_profile_env "$cfg"; cmd_use "$name" ) || {
+      echo "tack open: Claude preflight failed; no workspace started." >&2
+      return 1
+    }
+  fi
+  if [ "$want_codex" -eq 1 ]; then
+    (
+      cd "$dir" || exit 1
+      git submodule update --init --quiet 2>/dev/null || true
+      [ -f ./core/adapters/codex/apply-profile.sh ] || {
+        echo "tack open: Codex adapter missing from profile '$name' pinned core." >&2
+        exit 1
+      }
+      bash ./core/adapters/codex/apply-profile.sh ./manifest.json --no-activate
+    ) || {
+      echo "tack open: Codex preflight failed; no workspace started." >&2
+      return 1
+    }
+  fi
+
+  local first_command second_command=""
+  if [ "$want_claude" -eq 1 ]; then
+    first_command="$claude_command"
+    [ "$want_codex" -eq 1 ] && second_command="$codex_command"
+  else
+    first_command="$codex_command"
+  fi
+
+  if [ "$mux" = "herdr" ]; then
+    open_create_herdr "$session" "$workdir" "$cfg" "$want_claude" "$want_codex" \
+      "$actual_selection" "$detach" "$claude_command" "$codex_command"
+    return $?
+  fi
+
+  tmux new-session -d -s "$session" -n agents -c "$workdir" "$first_command" || return 1
+  if [ -n "$second_command" ]; then
+    if ! tmux split-window -h -t "$session:agents" -c "$workdir" "$second_command"; then
+      tmux kill-session -t "$session" >/dev/null 2>&1 || true
+      echo "tack open: second pane failed; incomplete session '$session' removed." >&2
+      return 1
+    fi
+    tmux select-layout -t "$session:agents" even-horizontal >/dev/null 2>&1 || true
+    tmux select-pane -t "$session:agents.0" >/dev/null 2>&1 || true
+  fi
+  echo "tack open: tmux session '$session' ready ($actual_selection, $name)"
+  if [ "$detach" -eq 1 ]; then
+    echo "  attach: tmux attach-session -t $session"
+    return 0
+  fi
+  open_attach_tmux "$session"
 }
 
 # --- isolated profiles -------------------------------------------------------
@@ -203,25 +669,77 @@ cmd_sync() {
       # repos each grew three commits the remote had never seen. Stop the repo
       # here instead. Divergence is a human call, and a sync that stacks another
       # commit on top of it only makes that call harder.
-      if ! git pull --ff-only -q; then
-        echo "  pull is not a fast-forward, skipped (no pin bump on a stale base)."
-        echo "  Fix: cd $d && git fetch && git log --oneline HEAD..origin/main"
-        echo "       then rebase or reset local commits onto origin/main and re-run."
-        echo "       If it is credentials, not divergence: gh auth setup-git"
-        exit 0
+      # advice.diverging off: the hint recommends merge or rebase, and the
+      # branch below does neither. Credential errors still reach stderr.
+      if ! git -c advice.diverging=false pull --ff-only -q; then
+        # The usual divergence here is not work at all: it is this machine's
+        # own unpushed pin bump against another machine's bump, so the two
+        # sides hold commits with identical content and different hashes.
+        # Telling a human to reset did not work: the message printed on every
+        # sync for days while the stale pin kept a stale core, and a stale core
+        # kept a stale tack that could not carry any fix. A pin is derived state
+        # (the sync below recomputes it), so when the local side touches only
+        # core, reset onto upstream and let the bump below redo it. An undo
+        # branch keeps the old tip. A rebase would be wrong: it replays an
+        # older pin on top of a newer one.
+        # ponytail: one path compared, no commit walk. A local commit touching
+        # core and anything else still stops here, which is correct.
+        if [ "$(git diff --name-only '@{u}...HEAD' 2>/dev/null)" = "core" ] \
+           && [ -z "$(git status --porcelain --untracked-files=no --ignore-submodules 2>/dev/null)" ]; then
+          undo="pre-reset-$(git rev-parse --short HEAD)"
+          git branch -f "$undo" >/dev/null 2>&1
+          if git reset -q --hard '@{u}'; then
+            echo "  local commits were only core pin bumps; reset onto upstream (undo: git reset --hard $undo)"
+          else
+            echo "  reset onto upstream failed, skipped (no pin bump on a stale base)."
+            exit 0
+          fi
+        else
+          echo "  pull is not a fast-forward, skipped (no pin bump on a stale base)."
+          echo "  Fix: cd $d && git fetch && git log --oneline HEAD..origin/main"
+          echo "       then rebase or reset local commits onto origin/main and re-run."
+          echo "       If it is credentials, not divergence: gh auth setup-git"
+          exit 0
+        fi
       fi
-      [ -d core ] || exit 0
+      # The engine repo has no core/ submodule of its own. This guard used to
+      # cover the push below too, so `tack sync --push` could never push
+      # tack: every profile's pin bump reached the remote while
+      # the core commit they all point at stayed on one machine, and the next
+      # sync's `submodule update --remote` then reset each pin to the last
+      # commit that had been pushed by hand. Bump the pin only where there is
+      # one; push either way.
       # A profile repo pins core as a submodule and its install.sh runs
       # `submodule update --init`, which snaps core back to the pinned commit.
       # So pulling core with --remote and then applying threw the update away:
       # a core fix could never arrive through a sync. Advance the pin, which is
       # what --remote asks for, and commit it so the apply actually sees it.
-      before="$(git rev-parse HEAD:core 2>/dev/null)"
-      git submodule update --init --remote --quiet || true
-      after="$(git -C core rev-parse HEAD 2>/dev/null)"
-      if [ -n "$after" ] && [ "$before" != "$after" ]; then
-        git add core && git commit -q -m "chore(core): bump submodule to $(git -C core rev-parse --short HEAD)" \
-          && echo "  core pin bumped to $(git -C core rev-parse --short HEAD)"
+      bumped=0
+      if [ -d core ]; then
+        before="$(git rev-parse HEAD:core 2>/dev/null)"
+        git submodule update --init --remote --quiet || true
+        after="$(git -C core rev-parse HEAD 2>/dev/null)"
+        if [ -n "$after" ] && [ "$before" != "$after" ]; then
+          git add core && git commit -q -m "chore(core): bump submodule to $(git -C core rev-parse --short HEAD)" \
+            && bumped=1 && echo "  core pin bumped to $(git -C core rev-parse --short HEAD)"
+        fi
+      fi
+      # A pin bump that is committed and never pushed is how a profile diverges,
+      # and it is guaranteed rather than unlucky: this machine commits bump X,
+      # a second machine commits its own bump to the same core commit and pushes
+      # it, and now each side holds a commit the other lacks whose content is
+      # identical. That is exactly what stranded tack-dev on
+      # 2026-09-01, and the seven sibling repos were three or four bumps deep in
+      # the same thing. --push stays off by default for one stated reason, that
+      # a push publishes the whole branch including unrelated local work. When
+      # the bump we just made is the only unpushed commit, there is no unrelated
+      # work for that reason to protect, so publish it and the divergence never
+      # forms.
+      if [ "$push" != 1 ] && [ "$bumped" = 1 ] \
+         && [ "$(git rev-list --count '@{u}..HEAD' 2>/dev/null)" = 1 ]; then
+        git push -q && echo "  pin bump pushed (it was the only unpushed commit)" \
+          || echo "  pin bump not pushed, it stays local (git credentials? try: gh auth setup-git)"
+        exit 0
       fi
       # Push on the flag, not on "did this run bump": a bump committed by an
       # earlier sync is exactly the commit that never reached the remote, and
@@ -256,7 +774,8 @@ cmd_sync() {
   # Pulling alone leaves the config dir on the old engine, so a synced machine kept
   # running removed hooks, skills and plugins until someone remembered to run
   # `tack use`. Sync means sync: re-apply the active profile.
-  local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo "" )"
+  local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || true )"
+  [ -n "$active" ] || active="$( [ -f "$CODEX_DIR/.harness-active" ] && cat "$CODEX_DIR/.harness-active" || true )"
   if [ -n "$active" ]; then
     echo "== re-applying active profile: $active =="
     cmd_use "$active" || return $?
@@ -267,29 +786,36 @@ cmd_sync() {
 
 cmd_status() {
   local active; active="$( [ -f "$ACTIVE_FILE" ] && cat "$ACTIVE_FILE" || echo none )"
-  echo "active profile: $active${CLAUDE_CONFIG_DIR:+   config: $CLAUDE_CONFIG_DIR}"
+  echo "Claude active: $active${CLAUDE_CONFIG_DIR:+   config: $CLAUDE_CONFIG_DIR}"
+  local codex_active; codex_active="$( [ -f "$CODEX_DIR/.harness-active" ] && cat "$CODEX_DIR/.harness-active" || echo none )"
+  echo "Codex active: $codex_active${CODEX_HOME:+   config: $CODEX_HOME}"
   for d in "$PROFILE_HOME"/*/; do
     [ -f "$d/.harness-active" ] || continue
     echo "  isolated: $(basename "$d")  (tack tmux $(basename "$d"))"
   done
   if command -v claude >/dev/null 2>&1; then
-    echo "MCP servers:"; claude mcp list 2>/dev/null | sed -n 's/^\([a-zA-Z0-9_-]*\): .* - .*/  \1/p' | sort -u
+    echo "Claude MCP servers:"; claude mcp list 2>/dev/null | sed -n 's/^\([a-zA-Z0-9_-]*\): .* - .*/  \1/p' | sort -u
   fi
   if command -v jq >/dev/null 2>&1 && [ -f "$CLAUDE_DIR/settings.json" ]; then
     echo "enabled plugins: $(jq -r '[(.enabledPlugins//{})|to_entries[]|select(.value)]|length' "$CLAUDE_DIR/settings.json")"
+  fi
+  if [ "$codex_active" != "none" ] && [ -f "$CODEX_DIR/$codex_active.config.toml" ]; then
+    echo "Codex profile config: $CODEX_DIR/$codex_active.config.toml"
   fi
 }
 
 # Commands return the apply status, so the caller (a script, a hook, CI) can
 # tell a real sync from one that pulled fine and then failed to apply.
 case "${1:-list}" in
+  -h|--help|help) print_help ;;
   list)    cmd_list ;;
   use)     shift; cmd_use "$@" ;;
+  open)    shift; cmd_open "$@" ;;
   shell)   shift; cmd_shell "$@" ;;
   tmux)    shift; cmd_tmux "$@" ;;
   herd)    shift; cmd_herd "$@" ;;
   install) shift; cmd_install "$@" ;;
   sync)    shift; cmd_sync "$@" ;;
   status)  cmd_status ;;
-  *) echo "usage: tack {list|use <name>|shell <name>|tmux <name>|herd <name>|install <name>|sync [--push]|status}" >&2; exit 1 ;;
+  *) echo "tack: unknown command '${1:-}'. Try: tack --help" >&2; exit 2 ;;
 esac

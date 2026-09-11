@@ -1,13 +1,22 @@
 {
+  "schema_version": 2,
   "name": "proposal",
   "description": "Client proposals and engagement deliverables",
   "caveman": "off",
-  "plugins": {
-    "frontend-slides@frontend-slides": true
-  },
   "mcp": [
     "atlassian"
   ],
-  "env": {},
+  "memory": {
+    "enabled": false
+  },
+  "providers": {
+    "claude": {
+      "plugins": {
+        "frontend-slides@frontend-slides": true
+      },
+      "env": {}
+    },
+    "codex": {}
+  },
   "notes": "Document and proposal work. Prose, not code, so no context7. Put your own deliverable templates in this profile repo's skills/."
 }

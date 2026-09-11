@@ -1,7 +1,10 @@
 {
   "cleanupPeriodDays": 60,
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CAVEMAN_DEFAULT_MODE": "off",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "4"
   },
   "permissions": {
     "deny": [
@@ -55,6 +58,12 @@
             "command": "p=\"$(command -v python3 || command -v python)\"; c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -n \"$p\" ] && [ -f \"$c/ghost/ghost_precheck.py\" ]; then \"$p\" \"$c/ghost/ghost_precheck.py\"; fi",
             "timeout": 10,
             "statusMessage": "ghost slop check..."
+          },
+          {
+            "type": "command",
+            "command": "p=\"$(command -v python3 || command -v python)\"; c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -n \"$p\" ] && [ -f \"$c/auditor/hooks/citation-validator.py\" ]; then \"$p\" \"$c/auditor/hooks/citation-validator.py\"; fi",
+            "timeout": 10,
+            "statusMessage": "citation mode check..."
           }
         ]
       },
@@ -194,6 +203,12 @@
       "source": {
         "source": "github",
         "repo": "zarazhangrui/frontend-slides"
+      }
+    },
+    "nateherk": {
+      "source": {
+        "source": "github",
+        "repo": "nateherkai/scroll-craft"
       }
     }
   },

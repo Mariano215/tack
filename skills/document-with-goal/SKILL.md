@@ -32,14 +32,12 @@ Claude should automatically use this skill when:
 
 ---
 
-## Safety Configuration
+## Retry ceiling
 
-**MANDATORY SAFETY LIMITS** (loaded from `~/.claude/skills/goal-safety-config.json`):
-- **Max Iterations:** 5
-- **Timeout:** 15m
-- **Rationale:** Documentation should converge quickly or needs human input
-
-These limits are **NON-NEGOTIABLE**.
+Stop after 5 rounds of fixes. Documentation that has not converged in five
+rounds has a scope problem, not a drafting problem. If it is still not
+complete, stop and report what is missing and what you tried. Never claim
+success at the ceiling.
 
 ---
 
@@ -62,7 +60,7 @@ These limits are **NON-NEGOTIABLE**.
 ### Phase 2: Goal-Driven Documentation
 3. Use `/goal` with mandatory safety limits:
    ```bash
-   /goal "all documentation complete and accurate" --max-iterations 5 --timeout 15m
+   /goal every item in the documentation checklist is written and accurate, or stop after 5 turns
    ```
 
 4. **Generate/Update docs:**
@@ -331,15 +329,3 @@ Claude automatically invokes document-with-goal:
 - Focuses on completeness and accuracy
 - Works best for technical documentation
 - May need human input for conceptual/marketing docs
-
----
-
-## Escalation (iteration 4)
-
-At iteration 4 without convergence (or at this skill's own limit when lower), pause. Summarize the attempts so far and the current hypothesis, then present three options and wait for the user's choice:
-
-1. Switch strategy: new hypothesis, different approach.
-2. Hand off to the built-in /loop for self-paced retries. REQUIRES an explicit user go. Token-expensive; never start /loop on your own.
-3. Stop and report findings.
-
-Hard limits in goal-safety-config.json still apply and override everything.

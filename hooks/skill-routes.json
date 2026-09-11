@@ -17,26 +17,26 @@
     {
       "id": "stuck-escalation",
       "pattern": "(still (broken|failing|not working)|tried .{0,20}(times|again)|keeps (failing|breaking|crashing)|can.?t (fix|figure)|(3rd|4th|third|fourth) (time|attempt)|no luck)",
-      "skill": "debug-with-goal",
-      "hint": "Repeated failures detected. If /debug has not run yet, start it. If its limits are already exhausted, offer the user an explicit /loop handoff (self-paced retries, token-expensive) or a strategy reset. Never start /loop without user confirmation."
+      "skill": "goal-iteration",
+      "hint": "Repeated failures detected. Invoke superpowers:systematic-debugging if it has not run; after three failed fixes it stops and questions the architecture rather than trying a fourth. If the work has a checkable finish line, set /goal with a turn clause. Never start an unattended loop without user confirmation."
     },
     {
       "id": "tdd",
       "pattern": "\\b(tdd|test[- ]driven|test[- ]first|with (unit )?tests|test coverage)\\b",
-      "skill": "tdd-with-goal",
-      "hint": "Red-green-refactor loop until tests pass (max 10 iterations, 20m)."
+      "skill": "goal-iteration",
+      "hint": "Invoke superpowers:test-driven-development for the red-green-refactor discipline, then set /goal with a condition the test output proves."
     },
     {
       "id": "bugfix",
       "pattern": "\\b(bug|broken|not working|failing|fails|crash(es|ing)?|regression|stack ?trace)\\b",
-      "skill": "debug-with-goal",
-      "hint": "Systematic root-cause loop until fixed (max 15 iterations, 30m)."
+      "skill": "goal-iteration",
+      "hint": "Invoke superpowers:systematic-debugging: root cause before any fix, one hypothesis at a time."
     },
     {
       "id": "feature",
       "pattern": "\\b(build|create|implement|add|new)\\b.{0,60}\\bfeature\\b|\\bfeature\\b.{0,30}\\b(build|implement)\\b",
-      "skill": "build-with-goal",
-      "hint": "Full pipeline: brainstorm, design, TDD implementation (max 25 iterations, 60m)."
+      "skill": "goal-iteration",
+      "hint": "Invoke superpowers:brainstorming for design and approval first, then implement test-first. Do not write code before the human approves the design."
     },
     {
       "id": "docs",

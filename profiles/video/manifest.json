@@ -1,12 +1,21 @@
 {
+  "schema_version": 2,
   "name": "video",
   "description": "Video instructions, product demos, PoCs, thought leadership",
   "caveman": "off",
-  "plugins": {
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
-    "frontend-slides@frontend-slides": true
-  },
   "mcp": [],
-  "env": {},
+  "memory": {
+    "enabled": false
+  },
+  "providers": {
+    "claude": {
+      "plugins": {
+        "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+        "frontend-slides@frontend-slides": true
+      },
+      "env": {}
+    },
+    "codex": {}
+  },
   "notes": "context7 only if the work is Remotion/Three.js code; not enabled by default."
 }

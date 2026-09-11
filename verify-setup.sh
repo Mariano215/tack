@@ -60,10 +60,10 @@ for f in "$CLAUDE/hooks/skill-router.sh" "$CLAUDE/statusline-command.sh" "$CLAUD
 done
 [ -z "$crlf" ] && ok "scripts have LF endings" || err "CRLF line endings:$crlf (re-clone with the repo's .gitattributes, or: sed -i 's/\r$//' <file>)"
 
-# router probe: a bug prompt must route to debug-with-goal (tests the hook, not skill presence)
+# router probe: a bug prompt must route to goal-iteration (tests the hook, not skill presence)
 if [ -x "$CLAUDE/hooks/skill-router.sh" ]; then
   out="$(SKILL_ROUTES_FILE="$CLAUDE/hooks/skill-routes.json" bash "$CLAUDE/hooks/skill-router.sh" <<<'{"prompt":"the login form is broken and failing"}' 2>/dev/null)"
-  echo "$out" | grep -q "debug-with-goal" && ok "router probe routes bug -> debug-with-goal" || warn "router probe did not match"
+  echo "$out" | grep -q "goal-iteration" && ok "router probe routes bug -> goal-iteration" || warn "router probe did not match"
 fi
 
 # router targets: every skill named in skill-routes.json should be reachable.
@@ -146,6 +146,18 @@ if command -v jq >/dev/null 2>&1 && [ "$(jq -r '(.enabledPlugins // {})["claude-
     [ -d "$MKT/node_modules" ] \
       && ok "claude-mem marketplace runtime present" \
       || err "claude-mem marketplace runtime missing (re-apply the profile, or: npx claude-mem repair)"
+  fi
+  # Telegram alerts on with no credentials. TelegramNotifier returns in silence
+  # when the token or the chat id is empty, so the feature reads as configured
+  # and never sends. The file is machine-wide, so this is true in every profile.
+  MEM_S="${CLAUDE_MEM_DATA_DIR:-$HOME/.claude-mem}/settings.json"
+  if [ -f "$MEM_S" ] && [ "$(jq -r '.CLAUDE_MEM_TELEGRAM_ENABLED // "false"' "$MEM_S" 2>/dev/null | tr -d '\r')" = "true" ]; then
+    if [ -n "$(jq -r '.CLAUDE_MEM_TELEGRAM_BOT_TOKEN // ""' "$MEM_S" 2>/dev/null | tr -d '\r')" ] \
+    && [ -n "$(jq -r '.CLAUDE_MEM_TELEGRAM_CHAT_ID // ""' "$MEM_S" 2>/dev/null | tr -d '\r')" ]; then
+      ok "claude-mem telegram configured"
+    else
+      warn "claude-mem telegram enabled with no token or chat id, so no alert is ever sent. Fix: set CLAUDE_MEM_TELEGRAM_BOT_TOKEN and CLAUDE_MEM_TELEGRAM_CHAT_ID in $MEM_S, or set CLAUDE_MEM_TELEGRAM_ENABLED to false"
+    fi
   fi
 fi
 [ -f "$CLAUDE/.harness-active" ] && ok "active profile: $(cat "$CLAUDE/.harness-active")" || warn "no active profile recorded"

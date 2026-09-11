@@ -4,12 +4,13 @@
 
 <h1 align="center">tack</h1>
 
-<p align="center"><b>Run a different Claude Code setup in every terminal.</b></p>
+<p align="center"><b>Run a different Claude Code and Codex setup in every terminal.</b></p>
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.2.0-3B7A57"></a>
 </p>
 
 <p align="center">
@@ -25,6 +26,10 @@ Both sessions share one login and one plugins tree. Neither can overwrite the
 other's config. Switching is one command, and the whole setup is a git repo you
 can hand to a teammate.
 
+One profile drives both agents. `tack use dev` applies it to Claude Code and to
+Codex, whichever CLIs are installed, and `tack open dev` starts both side by side
+in one workspace.
+
 ---
 
 ## Why
@@ -35,8 +40,8 @@ not. The usual answer is to enable a superset and live with the tax, or to toggl
 things by hand and forget what you changed.
 
 A **profile** is a recipe: a set of plugins, MCP servers, env vars, permissions
-and settings, kept in a git repo. `tack use <name>` composes your config dir from
-it. `tack shell <name>` does the same in an isolated config dir, so it only
+and settings, kept in a git repo. `tack use <name>` composes your Claude config
+dir and your Codex profile from it. `tack shell <name>` does the same in an isolated config dir, so it only
 affects that terminal.
 
 What that buys:
@@ -60,8 +65,10 @@ tack is for running more than one setup.
 
 ## Walkthrough 1: install and apply your first profile
 
-**Prerequisites:** bash, git, jq, python3, and the `claude` CLI. bash 3.2 is a
-supported target, so macOS works without upgrading bash.
+**Prerequisites:** bash, git, jq, python3, and at least one agent CLI: `claude`,
+`codex`, or both. A missing CLI is reported and skipped, never an error. bash 3.2
+is a supported target, so macOS works without upgrading bash. Windows runs
+through Git Bash; `setup-core.ps1` installs PowerShell and cmd launchers.
 
 **Step 1.** Get the engine on your PATH.
 
@@ -96,10 +103,12 @@ tack status
 ```
 
 ```
-active profile: dev
-MCP servers:
+Claude active: dev
+Codex active: dev
+Claude MCP servers:
   context7
-enabled plugins: 6
+enabled plugins: 9
+Codex profile config: ~/.codex/dev.config.toml
 ```
 
 ### Read this before your first apply
@@ -132,6 +141,11 @@ apply-profile: ~/.claude already has content this apply would REPLACE:
   Type 'yes' to continue anyway:
 ```
 
+On the Codex side the apply is gentler. It writes `$CODEX_HOME/<name>.config.toml`
+and never replaces your base `config.toml`, merges a marked policy block into
+`AGENTS.md` rather than overwriting it, and backs up any skill it would collide
+with. Codex asks you to trust the harness hooks once, through `/hooks`.
+
 Back up first if you have hand-written hooks or commands. To keep specific skills
 across applies, list them one per line in `~/.claude/.harness-skills-keep`. Same
 idea for marketplaces in `~/.claude/.harness-marketplaces-keep`.
@@ -147,6 +161,9 @@ Both are off by default, because both change how `claude` runs in every shell:
 
 `--no-api-key` is correct on a Max subscription and will break you if you pay by
 API key.
+
+The rc block always carries a `codex` wrapper: bare `codex` starts with the
+active tack profile, and `codex -p <other>` still wins when you name one.
 
 ---
 
@@ -188,6 +205,20 @@ Two details that matter:
 
 Delete an isolated profile at any time with `rm -rf ~/.claude-profiles/<name>`.
 
+### Claude and Codex in one workspace
+
+```bash
+tack open dev              # both agents, current directory, tmux (Herdr when inside it)
+tack open dev --codex      # Codex only
+tack open dev --cwd ~/src/app --detach
+tack open dev --dry-run    # print what it would do, change nothing
+```
+
+`tack open` keeps Claude on its isolated config dir and starts Codex with an
+explicit `codex -p <name>`, so the workspace never changes your default Codex
+profile. Running the same command again reuses the workspace instead of
+creating a second one. `tack open --help` lists every option.
+
 ---
 
 ## Walkthrough 3: write your own profile
@@ -202,21 +233,36 @@ tack-dev/
 └── skills/           your skills, copied into the config dir on apply
 ```
 
-**The manifest** is the whole configuration surface:
+**The manifest** is the whole configuration surface. Shared intent (MCP servers,
+memory) sits at the top; anything specific to one agent sits under `providers`:
 
 ```json
 {
+  "schema_version": 2,
   "name": "dev",
   "description": "Full-stack engineering",
-  "plugins": {
-    "superpowers@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true
-  },
   "mcp": ["context7"],
-  "env": { "SOME_FLAG": "1" },
-  "permissions": { "defaultMode": "auto" }
+  "memory": { "enabled": false },
+  "providers": {
+    "claude": {
+      "plugins": {
+        "superpowers@claude-plugins-official": true,
+        "pyright-lsp@claude-plugins-official": true
+      },
+      "env": { "SOME_FLAG": "1" },
+      "permissions": { "defaultMode": "auto" }
+    },
+    "codex": {
+      "config": { "model_reasoning_effort": "high" },
+      "permissions": { "approval_policy": "on-request" }
+    }
+  }
 }
 ```
+
+An older manifest with `plugins` and `env` at the top level (schema v1) still
+applies unchanged; Codex then gets the shared intent only.
+`manifest.schema.json` documents every field.
 
 **`install.sh`** never changes:
 
@@ -231,7 +277,9 @@ Then `tack use dev` applies it. Edit the manifest, run it again, and the config
 dir is recomposed from scratch. There is no partial state to reason about.
 
 `scripts/scaffold-profiles.sh` generates this structure for you if you would
-rather not build it by hand.
+rather not build it by hand. To have the agent research, design and build a new
+profile with you, ask for one: the `harness-builder` skill walks through
+research, a manifest you approve, and a verified apply.
 
 `profiles/` in this repo holds five working manifests you can copy: `dev`,
 `minimal`, `proposal`, `video`, `web`. They ship with no skills, because skills
@@ -271,13 +319,14 @@ that a sync cannot carry, rather than reporting success and leaving them behind.
 | Command | What it does |
 |---|---|
 | `tack list` | Profiles found, with the active one marked |
-| `tack use <name>` | Apply a profile to the current config dir |
+| `tack use <name>` | Apply a profile to every installed agent (Claude config dir, Codex profile) |
+| `tack open <name>` | Prepare the profile and open Claude and Codex together (tmux or Herdr) |
 | `tack shell <name>` | Apply into an isolated config dir and open a subshell there |
 | `tack tmux <name>` | Same, wrapped in `tmux new -As <name>` |
 | `tack herd <name>` | Same, as a Herdr workspace |
 | `tack install <name>` | Clone `$HARNESS_ORG/tack-<name>` and apply it |
 | `tack sync [--push]` | Pull every profile, advance its engine pin, re-apply the active one |
-| `tack status` | Active profile, isolated config dirs, MCP servers, plugin count |
+| `tack status` | Active profile per agent, isolated config dirs, MCP servers, plugin count |
 
 ## Configuration
 
@@ -290,6 +339,7 @@ that a sync cannot carry, rather than reporting success and leaving them behind.
 | `HARNESS_ALIAS_NAME` | `claude-code` | Name of the convenience alias |
 | `HARNESS_CORE_URL` | this repo | Engine source, for forks |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Config dir an apply writes to |
+| `CODEX_HOME` | `~/.codex` | Where Codex profile overlays and `.harness-active` live |
 
 ## Sharing profiles
 
@@ -304,11 +354,16 @@ isolated config dir rather than your main one.
 
 ## What ships here
 
-The engine (`bin/tack`, `lib/`, `hooks/`, `verify-setup.sh`), a set of
-general-purpose skills (TDD, debugging, docs, security audit, prompt-injection
-defense, code review, knowledge graphs), and `ghost`, a hook that blocks
-LLM-tell phrasing in `.txt`, `.docx` and `.pdf` writes. Edit
-`ghost/patterns.json` to make that list yours.
+The engine (`bin/tack`, `lib/`, `hooks/`, `verify-setup.sh`), one adapter per
+agent (`adapters/claude/`, `adapters/codex/`), a repo-local Codex plugin
+(`codex-marketplace/`) that marks Graphify output stale after edits and adds
+security context to sensitive changes, a set of general-purpose skills
+(goal-driven TDD, debugging and builds, docs, security audit, prompt-injection
+defense, code review, knowledge graphs, and `harness-builder` for new profiles),
+and `ghost`, a hook that blocks LLM-tell phrasing in `.txt`, `.docx` and `.pdf`
+writes. Edit `ghost/patterns.json` to make that list yours.
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
@@ -316,8 +371,9 @@ LLM-tell phrasing in `.txt`, `.docx` and `.pdf` writes. Edit
 git add -A && bash scripts/check.sh
 ```
 
-CI runs that plus `scripts/test-apply.sh`, which performs a real apply against a
-throwaway config dir on both Linux and macOS. See `CLAUDE.md` for the invariants,
+CI runs that script on Linux and macOS. It includes `scripts/test-apply.sh`
+and `scripts/test-apply-codex.sh`, which perform real applies against
+throwaway config dirs. See `CLAUDE.md` for the invariants,
 several of which exist because the thing they prevent has already shipped as a
 bug.
 

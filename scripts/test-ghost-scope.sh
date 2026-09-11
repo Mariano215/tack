@@ -39,6 +39,17 @@ if ".md" in [e.lower() for e in cfg.get("scan_extensions", [])]:
     print("test-ghost-scope: .md is back in scan_extensions; internal docs will block writes again")
     failed = 1
 
+# _compile drops a phrase that fails to compile and says nothing, so a typo in
+# patterns.json disables a pattern with no error anywhere. Catch it here.
+import re
+
+for p in cfg.get("phrases", []):
+    try:
+        re.compile(p, re.IGNORECASE)
+    except re.error as e:
+        print("test-ghost-scope: phrase does not compile, so it is silently ignored: %s (%s)" % (p, e))
+        failed = 1
+
 sys.exit(failed)
 PY
 rc=$?

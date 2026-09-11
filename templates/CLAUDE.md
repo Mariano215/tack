@@ -17,16 +17,24 @@ make the list your own.
 # Coding defaults
 Before writing code, state assumptions. Prefer the standard library over custom
 code, and the shortest diff that actually fixes the problem.
+Deliver what was asked, at the scope asked. Make routine judgment calls yourself
+and check in only when two readings of the request lead to materially different
+work. If the request looks mistaken, say so in one sentence and do it as asked
+rather than quietly narrowing or widening it. Finish the whole task and stop there.
+Do not add a verification pass of your own. The model already re-checks its
+work, so a second "now double-check" step costs tokens and changes nothing. Run
+the checks that produce evidence (tests, lint, a build) and report what they
+printed.
 
 # Skills
 When a request matches a skill description in the skills list, invoke that
-skill instead of improvising. Slash forms work directly: /tdd /debug /build
-/pre-push /document /graphify /handoff.
-
-Goal-driven skills (/tdd /debug /build /pre-push /document) iterate under hard
-limits from `~/.claude/skills/goal-safety-config.json`. At iteration 4 without
-convergence they pause and offer to switch strategy or stop. When a hard limit
-is hit: stop, report progress and next steps, never claim success.
+skill instead of improvising. Slash forms work directly: /pre-push /document
+/graphify /handoff /harness-builder.
+For test-driven work, debugging or a new feature, invoke the matching
+superpowers skill for the methodology, then set the built-in /goal with a
+condition the transcript can prove and a turn clause to bound it (/goal takes
+plain text, no flags). Never claim success without the command output that
+proves it.
 
 # Project record: the .agent/ directory
 A repo that contains a `.agent/` directory collects its own paper trail. The

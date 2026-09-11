@@ -17,6 +17,14 @@ MEM_DIR="${CLAUDE_MEM_DATA_DIR:-$HOME/.claude-mem}"
 MEM_SETTINGS="$MEM_DIR/settings.json"
 FALLBACK_MODEL="${HARNESS_MEM_FALLBACK_MODEL:-claude-haiku-4-5-20251001}"
 
+# Tests and offline bootstrap validation need profile composition without an
+# npm fetch or a worker repair. This skips only claude-mem setup; settings still
+# compose normally, so callers can test the rest of the apply deterministically.
+if [ -n "${HARNESS_NO_MEMORY_SETUP:-}" ]; then
+  echo "  claude-mem: setup skipped (HARNESS_NO_MEMORY_SETUP is set)"
+  exit 0
+fi
+
 command -v jq >/dev/null 2>&1 || exit 0
 
 # The ollama endpoint is per-tailnet, not a harness constant, so it is never
@@ -34,6 +42,10 @@ if [ -n "${HARNESS_MEM_PROVIDER:-}" ]; then
   [ "$provider" = "openrouter" ] && model="${OLLAMA_MODEL:-}" || model="$FALLBACK_MODEL"
 elif [ -n "$OLLAMA_URL" ] && curl -fsS --max-time 3 "${OLLAMA_URL%/v1}/api/tags" >/dev/null 2>&1; then
   provider="openrouter"; model="$OLLAMA_MODEL"
+elif ! command -v claude >/dev/null 2>&1; then
+  echo "  claude-mem: unavailable, no local provider and Claude CLI is absent"
+  echo "              Set HARNESS_MEM_PROVIDER and its model explicitly; no Anthropic fallback was selected."
+  exit 0
 else
   provider="claude"; model="$FALLBACK_MODEL"
   [ -n "$OLLAMA_URL" ] \

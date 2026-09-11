@@ -1,0 +1,19 @@
+{
+  "name": "harness-policy",
+  "version": "0.1.0",
+  "description": "Agent-harness safety and maintenance hooks for Codex",
+  "author": {
+    "name": "Agent Harness"
+  },
+  "interface": {
+    "displayName": "Harness Policy",
+    "shortDescription": "Safety and maintenance hooks for Codex.",
+    "longDescription": "Marks Graphify output stale after edits, and injects security review context for sensitive files.",
+    "developerName": "Agent Harness",
+    "category": "Productivity",
+    "capabilities": [
+      "hooks"
+    ],
+    "defaultPrompt": "Explain active harness policy hooks."
+  }
+}
