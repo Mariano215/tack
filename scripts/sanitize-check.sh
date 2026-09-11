@@ -28,6 +28,7 @@ PATTERNS="$PATTERNS|BEGIN [A-Z ]*PRIVATE KEY|sk-[A-Za-z0-9_-]{20}|ghp_[A-Za-z0-9
 if [ -f .sanitize-patterns ]; then
     PATTERNS=''
     while IFS= read -r line; do
+        line="${line%$'\r'}"  # a CRLF checkout (core.autocrlf) would end every entry in CR and match nothing
         case "$line" in ''|'#'*) continue ;; esac
         PATTERNS="${PATTERNS:+$PATTERNS|}$line"
     done < .sanitize-patterns
@@ -49,6 +50,7 @@ fi
 DENY_AUTHORS='\.local$|\.invalid$|\.localdomain$'
 if [ -f .sanitize-authors-deny ]; then
     while IFS= read -r line; do
+        line="${line%$'\r'}"  # a CRLF checkout (core.autocrlf) would end every entry in CR and match nothing
         case "$line" in ''|'#'*) continue ;; esac
         DENY_AUTHORS="$DENY_AUTHORS|$line"
     done < .sanitize-authors-deny
@@ -78,6 +80,7 @@ fi
 excludes=(':!scripts/sanitize-check.sh' ':!.sanitize-allow' ':!.sanitize-patterns' ':!.sanitize-authors-deny')
 if [ -f .sanitize-allow ]; then
     while IFS= read -r line; do
+        line="${line%$'\r'}"  # a CRLF checkout (core.autocrlf) would end every entry in CR and match nothing
         case "$line" in ''|'#'*) continue ;; esac
         excludes+=(":!$line")
     done < .sanitize-allow
@@ -102,6 +105,7 @@ untracked=$(printf '%s\n' "$untracked" \
 # understand, so apply it here as a prefix match on the reported path.
 if [ -n "$untracked" ] && [ -f .sanitize-allow ]; then
     while IFS= read -r line; do
+        line="${line%$'\r'}"  # a CRLF checkout (core.autocrlf) would end every entry in CR and match nothing
         case "$line" in ''|'#'*) continue ;; esac
         untracked=$(printf '%s\n' "$untracked" | grep -v "^${line%%\**}" || true)
     done < .sanitize-allow

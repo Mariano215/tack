@@ -37,6 +37,9 @@ tack now drives Codex as well as Claude Code, from the same profile.
   compiles every pattern.
 - Tests: Codex apply, provider selection, memory provider choice, Codex
   plugin hooks, `tack open`, sync pin reset. All run from `scripts/check.sh`.
+- `sanitize-check.sh` strips a trailing CR from each pattern line. On a CRLF
+  checkout every pattern ended in CR and the sweep reported clean while
+  matching nothing. `scripts/test-sanitize-crlf.sh` holds the line.
 - Windows: the suites run on Git Bash (tool wrappers instead of copied
   launchers, and a real batch file for the `.cmd` installer case).
 

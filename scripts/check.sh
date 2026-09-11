@@ -115,6 +115,7 @@ done < <(grep -rn "jq -r" lib/ adapters/ hooks/ scripts/ verify-setup.sh 2>/dev/
 
 # 6. Sensors that already existed and were invoked by nothing.
 bash scripts/sanitize-check.sh >/dev/null 2>&1 || { bash scripts/sanitize-check.sh; fail=1; }
+out="$(bash scripts/test-sanitize-crlf.sh 2>&1)" || { echo "$out"; err "scripts/test-sanitize-crlf.sh failed." "sanitize-check.sh must strip a trailing CR from every line it reads from .sanitize-patterns, .sanitize-allow and .sanitize-authors-deny. Without it a Windows checkout sweeps for nothing and reports clean."; }
 out="$(bash scripts/test-resolve-link-target.sh 2>&1)" || { echo "$out"; err "scripts/test-resolve-link-target.sh failed." "See the failing case above. It covers \$HARNESS_ROOT and ~/ expansion in skills_link."; }
 out="$(bash scripts/test-manifest-provider-view.sh 2>&1)" || { echo "$out"; err "scripts/test-manifest-provider-view.sh failed." "Provider manifest normalization broke. v1 must retain legacy behavior; v2 must expose only the selected provider config plus shared intent."; }
 out="$(bash scripts/test-ghost-scope.sh 2>&1)" || { echo "$out"; err "scripts/test-ghost-scope.sh failed." "ghost must scan only client-facing document formats (.txt, .docx, .pdf). Putting .md back in scan_extensions makes every internal note able to block a write and cost a rewrite."; }
