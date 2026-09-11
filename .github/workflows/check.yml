@@ -13,24 +13,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: install shellcheck (macos)
+      - name: install shellcheck and jq (macos)
         if: runner.os == 'macOS'
         run: brew install shellcheck jq
       - name: gate
         run: bash scripts/check.sh
 
-  apply:
-    # The gate is static analysis only. This runs a real apply against a
-    # throwaway config dir, which is the one thing that has to work.
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: install jq (macos)
-        if: runner.os == 'macOS'
-        run: brew install jq
-      - name: apply the minimal profile to a throwaway config dir
-        run: bash scripts/test-apply.sh

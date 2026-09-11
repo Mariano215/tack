@@ -371,7 +371,7 @@ Release notes live in [CHANGELOG.md](CHANGELOG.md).
 git add -A && bash scripts/check.sh
 ```
 
-CI runs that script on Linux and macOS. It includes `scripts/test-apply.sh`
+CI runs that script and nothing else, on Linux and macOS. It includes `scripts/test-apply.sh`
 and `scripts/test-apply-codex.sh`, which perform real applies against
 throwaway config dirs. See `CLAUDE.md` for the invariants,
 several of which exist because the thing they prevent has already shipped as a
