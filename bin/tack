@@ -66,6 +66,11 @@ Sync option:
                              Without it, tack still publishes a newly created pin
                              when that pin is the only unpushed commit.
 
+New profile:
+  Ask your agent "build me a harness for <kind of work>". The harness-builder
+  skill researches it, shows you the manifest to approve, then builds, applies
+  and verifies it. By hand: README.md, "Walkthrough 3: write your own profile".
+
 Help:
   tack --help                  Show this guide.
   tack open --help             Show detailed workspace examples and behavior.

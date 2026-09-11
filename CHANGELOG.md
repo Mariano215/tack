@@ -4,6 +4,13 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## Unreleased
+
+- `tack --help` has a "New profile" section: ask the agent, which uses
+  `harness-builder`, or follow Walkthrough 3 by hand.
+- CI runs `scripts/check.sh` only; the separate apply job ran the same
+  apply twice per OS.
+
 ## 0.2.0 (2026-09-11)
 
 tack now drives Codex as well as Claude Code, from the same profile.
