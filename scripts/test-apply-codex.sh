@@ -92,6 +92,7 @@ fi
   && grep -q 'Build With Goal' "$CODEX_HOME/skills/build-with-goal/SKILL.md" \
   && ok "Codex-native workflow skill installed" || bad "Codex workflow skill missing"
 [ -f "$CODEX_HOME/skills/security-audit/SKILL.md" ] \
+  && [ -f "$CODEX_HOME/skills/harness-builder/SKILL.md" ] \
   && ok "provider-neutral core skill installed" || bad "shared core skill missing"
 find "$CODEX_HOME/backups" -path '*/skills/build-with-goal/SKILL.md' -type f | grep -q . \
   && ok "skill collision backed up" || bad "skill collision had no backup"

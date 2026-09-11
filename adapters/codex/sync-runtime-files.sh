@@ -73,7 +73,7 @@ sync_skills() {
 
   # Provider-neutral core skills use one source. Coupled workflows have compact
   # Codex-native variants below until their shared versions lose tool coupling.
-  for name in gauntlet-loop git-best-practices ingest-scrubbing prompt-injection-defense repro security-audit; do
+  for name in gauntlet-loop git-best-practices harness-builder ingest-scrubbing prompt-injection-defense repro security-audit; do
     add_source "$name" "$CORE_DIR/skills/$name"
   done
   for source in "$CORE_DIR"/adapters/codex/skills/*; do
