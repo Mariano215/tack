@@ -132,10 +132,16 @@ out="$(bash scripts/test-codex-memory.sh 2>&1)" || { echo "$out"; err "scripts/t
 out="$(bash scripts/test-codex-plugin.sh 2>&1)" || { echo "$out"; err "scripts/test-codex-plugin.sh failed." "Codex policy plugin registration or hook behavior broke. Graphify and security hooks must fail open and emit valid context."; }
 out="$(bash scripts/test-marketplace-enabled.sh 2>&1)" || { echo "$out"; err "scripts/test-marketplace-enabled.sh failed." "plugin-auto-update.sh must skip a marketplace whose plugins are all disabled. Without the guard, disabling a plugin still pays its bun/npm install on every session start, and on Windows that install fails with ENOTEMPTY where nobody will see it."; }
 
-# 7a. base-settings.json owns enabledPlugins. Profiles share one plugins tree,
-#     so a profile that turns a plugin on locally puts the two config dirs into
-#     a loop: A's apply prunes it, B's heal re-adds it, forever. It is also how
-#     an always-on instruction layer nobody chose stays switched on for months.
+# 7a. enabledPlugins in the live settings must be what an apply would produce.
+#     adapters/claude/apply-profile.sh:148 composes it as base-settings plus
+#     the active profile manifest's plugins, so that pair is the expectation.
+#     Comparing against base-settings alone flags every profile that
+#     legitimately adds a plugin, which is how the first version of this rule
+#     read a deliberate manifest entry as drift.
+#     What it does catch is a value that matches neither: something edited the
+#     live settings by hand, or a second config dir is fighting this one over
+#     the shared plugins tree, or an always-on instruction layer nobody chose
+#     is switched on and the next apply will keep switching it back.
 #     Only compares when THIS repo is the engine that produced that config.
 #     verify-setup.sh is copied verbatim by the apply, so an identical file is
 #     proof of provenance, and without that gate a checkout of the public
@@ -144,19 +150,27 @@ out="$(bash scripts/test-marketplace-enabled.sh 2>&1)" || { echo "$out"; err "sc
 #     the right direction to fail. CI has no live config at all.
 LIVE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 LIVE_SETTINGS="$LIVE_ROOT/settings.json"
+# harness:shared - .harness-root and .harness-active are machine-wide, and
+# bin/hx reads them from this same path.
+ACTIVE_NAME="$(cat "$HOME/.claude/.harness-active" 2>/dev/null | tr -d '\r')"
+ACTIVE_ROOT="$(cat "$HOME/.claude/.harness-root" 2>/dev/null | tr -d '\r')"
+ACTIVE_MANIFEST="$ACTIVE_ROOT/tack-$ACTIVE_NAME/manifest.json"
+[ -f "$ACTIVE_MANIFEST" ] || ACTIVE_MANIFEST="profiles/$ACTIVE_NAME/manifest.json"
 if cmp -s verify-setup.sh "$LIVE_ROOT/verify-setup.sh" \
-   && [ -f "$LIVE_SETTINGS" ] && jq -e . "$LIVE_SETTINGS" >/dev/null 2>&1; then
-  DRIFT="$(jq -rn --slurpfile a base-settings.json --slurpfile b "$LIVE_SETTINGS" '
-    ($a[0].enabledPlugins // {}) as $base | ($b[0].enabledPlugins // {}) as $live
-    | [ $base | keys[] | select(($live[.] // false) != $base[.])
-        | "\(.): base-settings=\($base[.]|tostring) live=\($live[.] // false|tostring)" ]
+   && [ -f "$LIVE_SETTINGS" ] && jq -e . "$LIVE_SETTINGS" >/dev/null 2>&1 \
+   && [ -f "$ACTIVE_MANIFEST" ] && jq -e . "$ACTIVE_MANIFEST" >/dev/null 2>&1; then
+  DRIFT="$(jq -rn --slurpfile a base-settings.json --slurpfile b "$LIVE_SETTINGS" \
+                  --slurpfile m "$ACTIVE_MANIFEST" '
+    (($a[0].enabledPlugins // {}) + ($m[0].providers.claude.plugins // $m[0].plugins // {})) as $want
+    | ($b[0].enabledPlugins // {}) as $live
+    | [ $want | keys[] | select(($live[.] // false) != $want[.])
+        | "\(.): expected=\($want[.]|tostring) live=\($live[.] // false|tostring)" ]
     | join(", ")' 2>/dev/null | tr -d '\r')"
   if [ -n "$DRIFT" ]; then
-    err "enabledPlugins in $LIVE_SETTINGS disagrees with base-settings.json: $DRIFT" \
-      "base-settings.json is the owner, so decide there and re-apply: tack use <profile>. If the live value is the one you want, change base-settings.json to match and commit it. Leaving them apart means the next apply silently flips the plugin back and takes its always-on instructions with it."
+    err "enabledPlugins in $LIVE_SETTINGS is not what an apply would produce: $DRIFT" \
+      "Expected is base-settings.json plus $ACTIVE_MANIFEST. Re-apply to get there: tack use $ACTIVE_NAME. If the live value is the one you want, change whichever of those two files owns the key and commit it. Leaving them apart means the next apply silently flips the plugin back and takes its always-on instructions with it."
   fi
 fi
-
 # 7b. Config-root parameterization. Two profiles now run side by side, each with
 #     its own CLAUDE_CONFIG_DIR (tack shell / tack tmux / tack herd). A path hardcoded
 #     to $HOME/.claude reads and writes the OTHER terminal's state, and the
