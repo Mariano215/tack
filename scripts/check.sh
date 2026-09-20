@@ -120,6 +120,7 @@ out="$(bash scripts/test-resolve-link-target.sh 2>&1)" || { echo "$out"; err "sc
 out="$(bash scripts/test-manifest-provider-view.sh 2>&1)" || { echo "$out"; err "scripts/test-manifest-provider-view.sh failed." "Provider manifest normalization broke. v1 must retain legacy behavior; v2 must expose only the selected provider config plus shared intent."; }
 out="$(bash scripts/test-ghost-scope.sh 2>&1)" || { echo "$out"; err "scripts/test-ghost-scope.sh failed." "ghost must scan only client-facing document formats (.txt, .docx, .pdf). Putting .md back in scan_extensions makes every internal note able to block a write and cost a rewrite."; }
 out="$(bash scripts/test-sync-pin-reset.sh 2>&1)" || { echo "$out"; err "scripts/test-sync-pin-reset.sh failed." "tack sync must reset a profile whose only local commits are core pin bumps, and must stop on divergence that carries work. See the failing case above."; }
+out="$(bash scripts/test-context-cost.sh 2>&1)" || { echo "$out"; err "scripts/test-context-cost.sh failed." "context-cost.sh must count each enabled plugin once, at its installed version, and must skip disabled plugins. The plugin cache keeps every version ever pulled, so a glob over it reported this machine 4x over and made the number useless for deciding what to cut."; }
 out="$(bash scripts/test-skill-routes.sh 2>&1)" || { echo "$out"; err "scripts/test-skill-routes.sh failed." "A route in hooks/skill-routes.json changed behaviour. Fix the pattern, or if the new behaviour is intended, update the case table in scripts/test-skill-routes.sh. Routes are matched in file order and the first hit wins, so moving a route can steal another route's prompts."; }
 out="$(bash scripts/test-capture-plan.sh 2>&1)" || { echo "$out"; err "scripts/test-capture-plan.sh failed." "hooks/capture-plan.sh must write only when the repo already has a .agent/ directory, and must exit 0 on empty, malformed or rejected input. Restore the gate at the top of the hook."; }
 out="$(bash scripts/test-apply.sh 2>&1)" || { echo "$out"; err "scripts/test-apply.sh failed." "A real apply against a throwaway HOME broke. Read the failing case above and re-run: bash scripts/test-apply.sh. Everything else here is static analysis, so this is the only check that notices when the apply itself stops working."; }
@@ -130,6 +131,31 @@ out="$(bash scripts/test-memory-provider.sh 2>&1)" || { echo "$out"; err "script
 out="$(bash scripts/test-codex-memory.sh 2>&1)" || { echo "$out"; err "scripts/test-codex-memory.sh failed." "Codex must register claude-mem through one plugin path, request removal of the stale direct MCP, and back up config.toml first."; }
 out="$(bash scripts/test-codex-plugin.sh 2>&1)" || { echo "$out"; err "scripts/test-codex-plugin.sh failed." "Codex policy plugin registration or hook behavior broke. Graphify and security hooks must fail open and emit valid context."; }
 out="$(bash scripts/test-marketplace-enabled.sh 2>&1)" || { echo "$out"; err "scripts/test-marketplace-enabled.sh failed." "plugin-auto-update.sh must skip a marketplace whose plugins are all disabled. Without the guard, disabling a plugin still pays its bun/npm install on every session start, and on Windows that install fails with ENOTEMPTY where nobody will see it."; }
+
+# 7a. base-settings.json owns enabledPlugins. Profiles share one plugins tree,
+#     so a profile that turns a plugin on locally puts the two config dirs into
+#     a loop: A's apply prunes it, B's heal re-adds it, forever. It is also how
+#     an always-on instruction layer nobody chose stays switched on for months.
+#     Only compares when THIS repo is the engine that produced that config.
+#     verify-setup.sh is copied verbatim by the apply, so an identical file is
+#     proof of provenance, and without that gate a checkout of the public
+#     sibling reports every plugin on a private machine as drift. If the repo
+#     copy has been edited and not yet applied the check goes quiet, which is
+#     the right direction to fail. CI has no live config at all.
+LIVE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+LIVE_SETTINGS="$LIVE_ROOT/settings.json"
+if cmp -s verify-setup.sh "$LIVE_ROOT/verify-setup.sh" \
+   && [ -f "$LIVE_SETTINGS" ] && jq -e . "$LIVE_SETTINGS" >/dev/null 2>&1; then
+  DRIFT="$(jq -rn --slurpfile a base-settings.json --slurpfile b "$LIVE_SETTINGS" '
+    ($a[0].enabledPlugins // {}) as $base | ($b[0].enabledPlugins // {}) as $live
+    | [ $base | keys[] | select(($live[.] // false) != $base[.])
+        | "\(.): base-settings=\($base[.]|tostring) live=\($live[.] // false|tostring)" ]
+    | join(", ")' 2>/dev/null | tr -d '\r')"
+  if [ -n "$DRIFT" ]; then
+    err "enabledPlugins in $LIVE_SETTINGS disagrees with base-settings.json: $DRIFT" \
+      "base-settings.json is the owner, so decide there and re-apply: tack use <profile>. If the live value is the one you want, change base-settings.json to match and commit it. Leaving them apart means the next apply silently flips the plugin back and takes its always-on instructions with it."
+  fi
+fi
 
 # 7b. Config-root parameterization. Two profiles now run side by side, each with
 #     its own CLAUDE_CONFIG_DIR (tack shell / tack tmux / tack herd). A path hardcoded
