@@ -228,8 +228,12 @@ open_attach_tmux() {
 
 herdr_find_workspace() {
   local label="$1"
-  herdr workspace list 2>/dev/null | jq -r --arg label "$label" '
-    [.result.workspaces[]? | select(.label == $label) | .workspace_id][0] // empty
+  # The jq variable is NOT named $label. "label" is a jq keyword (label $out |
+  # break), so --arg label made every call a compile error, the lookup returned
+  # empty every time, and 'tack open --herdr' created a duplicate workspace
+  # instead of reusing the one already open. Do not rename it back.
+  herdr workspace list 2>/dev/null | jq -r --arg want "$label" '
+    [.result.workspaces[]? | select(.label == $want) | .workspace_id][0] // empty
   ' | tr -d '\r'
 }
 
