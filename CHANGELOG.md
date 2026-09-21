@@ -6,6 +6,22 @@ existing profile needs.
 
 ## Unreleased
 
+- `scripts/context-cost.sh` prints what the harness costs in every request,
+  per layer: memory files, skill descriptions, subagent descriptions, and
+  with `--run-hooks` the SessionStart output. Skills are usually the largest
+  and the least visible, because every enabled skill advertises its
+  description on every turn whether or not it is ever invoked. It counts each
+  enabled plugin once at its installed version, since the plugin cache keeps
+  every version ever pulled, and it reads each plugin's hooks file from its
+  `plugin.json` rather than assuming `hooks/hooks.json`.
+- `check.sh` fails when `enabledPlugins` in the live `settings.json` is not
+  what an apply would produce, meaning base-settings plus the active
+  profile manifest's plugins. It only compares when this repo is the engine
+  that produced that config.
+- Fixed `tack open --herdr` creating a duplicate workspace instead of
+  focusing the open one. `label` is a jq keyword, so `--arg label` made the
+  workspace lookup a compile error on every call.
+
 - `tack --help` has a "New profile" section: ask the agent, which uses
   `harness-builder`, or follow Walkthrough 3 by hand.
 - CI runs `scripts/check.sh` only; the separate apply job ran the same
