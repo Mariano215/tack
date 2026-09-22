@@ -96,6 +96,16 @@ else
   warn "statusline not wired"
 fi
 
+# claude.ai sync: since 2.1.275 Claude Code pulls the plugins and skills enabled
+# on the claude.ai account into every session, outside enabledPlugins, so no
+# profile can filter them. Base turns both off; anything else means base lost.
+if command -v jq >/dev/null 2>&1; then
+  for k in syncClaudeAiPlugins syncClaudeAiSkills; do
+    if [ "$(jq -r ".$k" "$S" 2>/dev/null | tr -d '\r')" = "false" ]; then ok "$k off"
+    else err "$k is not false, so claude.ai account plugins and skills load in every profile. Fix: re-apply with 'tack use \$(cat $CLAUDE/.harness-active)', and check that base-settings.json still sets \"$k\": false"; fi
+  done
+fi
+
 # output style: settings names one, the file that defines it must be here too.
 # Claude Code falls back to the default style in silence when it is not, so the
 # prose rules quietly stop applying with nothing on screen to say so.

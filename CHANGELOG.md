@@ -6,6 +6,14 @@ existing profile needs.
 
 ## Unreleased
 
+- Base settings turn off `syncClaudeAiPlugins` and `syncClaudeAiSkills`.
+  Since Claude Code 2.1.275 the plugins and skills enabled on the claude.ai
+  account load into every terminal session outside `enabledPlugins`, so a
+  profile could not filter them, and each one can bring its own MCP servers.
+  `verify-setup.sh` fails when either key is not false and names the fix.
+  claude.ai connectors are left on; set `disableClaudeAiConnectors` yourself
+  if you want those gone too.
+
 - `scripts/context-cost.sh` prints what the harness costs in every request,
   per layer: memory files, skill descriptions, subagent descriptions, and
   with `--run-hooks` the SessionStart output. Skills are usually the largest

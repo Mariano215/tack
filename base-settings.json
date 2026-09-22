@@ -215,5 +215,7 @@
   "agent": "task-orchestrator",
   "autoUpdatesChannel": "latest",
   "autoMemoryEnabled": false,
+  "syncClaudeAiPlugins": false,
+  "syncClaudeAiSkills": false,
   "useAutoModeDuringPlan": true
 }
