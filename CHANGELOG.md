@@ -6,6 +6,11 @@ existing profile needs.
 
 ## Unreleased
 
+- `smart-agent-spawner` effort guidance follows Opus 5.5: the default effort
+  is `medium`, not `high`, and Opus 5.5 at `medium` beats Opus 5 at `high`, so
+  the Opus tier now starts there. Thinking cannot be disabled at any effort
+  level, and the Opus/Sonnet price gap is about 1.3x.
+
 - Base settings turn off `syncClaudeAiPlugins` and `syncClaudeAiSkills`.
   Since Claude Code 2.1.275 the plugins and skills enabled on the claude.ai
   account load into every terminal session outside `enabledPlugins`, so a

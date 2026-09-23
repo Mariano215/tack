@@ -34,7 +34,7 @@ Task characteristics:
 - Performance optimization requiring deep analysis
 - Migration planning between technologies
 
-Cost: the Opus tier runs roughly 1.7x Sonnet 5's $3/$15 per MTok, not the 5x gap older models had. Opus is also the default session model. Don't downgrade a spawn to save cost unless the task is genuinely mechanical.
+Cost: Opus 5.5 runs $4/$20 per MTok, roughly 1.3x Sonnet 5's $3/$15, not the 5x gap older models had. Opus is also the default session model. Don't downgrade a spawn to save cost unless the task is genuinely mechanical.
 
 ### Sonnet, balanced, default choice
 
@@ -85,31 +85,33 @@ Two hard limits on Haiku 4.5, both easy to trip:
 
 Effort control (`low` / `medium` / `high` / `xhigh` / `max`) only exists on the `Workflow` tool's `agent(prompt, {model, effort})` option. The plain `Agent` tool has no effort parameter, don't try to pass one there.
 
-Default is `high` when unset. `xhigh` sits between `high` and `max`.
+Default when unset is `medium` on Opus 5.5 and `high` on every other model that takes effort. `xhigh` sits between `high` and `max`.
 
 - Haiku tier: omit effort. Haiku 4.5 rejects the parameter outright.
 - Sonnet 5 tier: omit effort (inherits session default) for routine work. Supports the full range up to `max`.
-- Opus 5 tier: start at `high`, which is the default and the same as omitting the
-  parameter. Step up to `xhigh` for demanding coding and agentic work, and to `max`
-  only when the task justifies unconstrained spending. Step down to `low` or `medium`
-  freely: on Opus 5 those levels hold quality on most work and are the primary control
-  for token cost and latency.
+- Opus 5.5 tier: start at `medium`, which is the default and the same as omitting the
+  parameter. Opus 5.5 at `medium` beats Opus 5 at `high` on coding and knowledge work,
+  and `low` comes close on many coding tasks. Step up to `high` for hard work, and to
+  `xhigh` or `max` only where you have measured a gain: at the same level Opus 5.5
+  thinks more per turn than Opus 5, so those levels cost more than they used to.
 - `low` and `medium`: short scoped tasks, mechanical stages, latency-sensitive work.
   Current models respect low effort strictly and scope work to exactly what was asked,
   so raise the tier rather than prompting around shallow reasoning.
 
-Opus 4.8 wanted `xhigh` as the starting point for coding and agentic work. Opus 5 does
-not. If a caller still pins `xhigh` by default it is carrying a 4.8 setting forward, and
-Anthropic's guidance is to re-measure rather than reuse it.
+Effort names do not mean the same amount of thinking across models. Opus 4.8 wanted
+`xhigh`, Opus 5 wanted `high`, Opus 5.5 wants `medium`. A caller that pins `high` or
+`xhigh` by default is carrying an older setting forward, and Anthropic's guidance is to
+re-measure rather than reuse it.
 
-Effort controls how much the agent thinks, not how long its visible answer is. On Opus 5,
+Effort controls how much the agent thinks, not how long its visible answer is. On Opus 5.5,
 lowering effort does not reliably shorten the reply. If a spawned agent returns more prose
 than the caller needs, say so in the prompt instead of dropping effort.
 
 At `xhigh` or `max`, give the agent room in its output budget. Adaptive thinking can
 consume a large share of it, and a tight budget yields a response that is mostly thinking
-followed by a truncated answer. Opus 5 also refuses to run with thinking disabled at
-`xhigh` or `max`; that combination returns a 400 error.
+followed by a truncated answer. Opus 5.5 cannot run with thinking disabled at any
+effort level; `thinking: disabled` and `budget_tokens` both return a 400 error. Lower
+effort instead.
 
 ## When Not To Spawn At All
 
@@ -179,6 +181,6 @@ Don't change models mid-task without a reason (a failure, or a scope change).
 
 Critical decisions and reviews use Opus. Implementation and development use Sonnet. Searches and simple tasks use Haiku. On failure, escalate one tier and one effort step, retry, cap at 3 attempts, then ask the user.
 
-Key principle: pick the tier that can reliably accomplish the task. The Opus/Sonnet price gap is now ~1.7x, not 5x, so cost is a weak reason to downgrade. When in doubt, inherit the session model rather than pinning a cheaper one.
+Key principle: pick the tier that can reliably accomplish the task. The Opus/Sonnet price gap is now ~1.3x, not 5x, so cost is a weak reason to downgrade. When in doubt, inherit the session model rather than pinning a cheaper one.
 
 `claude-fable-5` also exists ($10/$50 per MTok, above Opus tier, thinking always on). It is not part of the normal ladder. Use it only when the user names it explicitly.
