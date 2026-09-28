@@ -115,15 +115,19 @@ effort instead.
 
 ## When Not To Spawn At All
 
-Opus 5 delegates more readily than earlier models, so the cheapest win here is usually
-not picking a better tier, it is not spawning. Delegation multiplies cost and wall-clock
-time, and on small work it loses to doing the job directly.
+Opus 5 delegates readily on its own, so decide by the shape of the work, not by call
+count. Three reads of large files fill the caller's context more than twenty small edits.
 
-Spawn only when the work is large, genuinely independent, and parallelizable, such as a
-wide multi-file investigation or several unrelated review dimensions. Do not spawn for
-work you can finish in a handful of tool calls. Do not spawn an agent to verify or
-double-check your own output: Opus 5 already checks its own work, and a verifier agent
-adds cost without adding accuracy. If one agent can do the job, use one, not three.
+Spawn when the work reads a lot and returns a little (wide search, log or test triage,
+a review), or when it is a specified implementation unit with a clear check. The
+subagent absorbs the noise and the caller gets a short answer.
+
+Do not spawn for decisions, plans, small edits, or edits that depend on detail the
+caller already holds: the subagent starts cold, re-reads it, and returns a lossy
+summary. Do not spawn an agent to verify or double-check your own output: Opus 5
+already checks its own work, and a verifier agent adds cost without adding accuracy.
+The one exception is `code-reviewer` at a checkpoint or commit gate: it reads the plan
+and the diff in a fresh context, without the writer's assumptions.
 
 The deterministic backstop is two environment variables, `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`
 and `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (Claude Code 2.1.217 or later). The harness sets

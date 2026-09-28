@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # model-router-nudge.sh
 # PreToolUse hook (matcher: Agent|Task|Workflow): asks whether this spawn is
-# warranted at all, then reminds Claude of smart-agent-spawner's model, effort
+# warranted by the shape of the work, then reminds Claude of smart-agent-spawner's model, effort
 # and retry rules. Current models delegate readily on their own, so the first
 # question is whether to delegate, not which tier to delegate to.
 # Advisory only. FAIL-OPEN: any error, missing dep -> exit 0, no output.
@@ -15,7 +15,7 @@ input=$(cat 2>/dev/null) || exit 0
 jq -n '{
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
-    additionalContext: "Before spawning: is this large, genuinely independent, parallelizable work? If you could finish it in a handful of tool calls, do it yourself instead. Never spawn an agent to verify or double-check your own output. If you do spawn, apply smart-agent-spawner: pick model tier (haiku/sonnet/opus) by task complexity, set effort only if using Workflow agent(), keep the count low, and on failure escalate one tier and retry (cap 3 attempts, then ask the user)."
+    additionalContext: "Before spawning: does this work read a lot and return a little (search, log or test triage, review), or is it a specified implementation unit with a clear check? Then delegate. If it is a decision, a plan, a small edit, or depends on detail you already hold, do it yourself. Never spawn an agent to verify or double-check your own output; the one exception is code-reviewer at a checkpoint or commit gate. If you do spawn, apply smart-agent-spawner: pick model tier (haiku/sonnet/opus) by task complexity, set effort only if using Workflow agent(), keep the count low, and on failure escalate one tier and retry (cap 3 attempts, then ask the user)."
   }
 }' 2>/dev/null || exit 0
 

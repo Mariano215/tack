@@ -27,21 +27,21 @@ Cybersecurity is not a phase. It is a lens applied from the first line to the la
 
 | Agent | When to use | Suggested tier |
 |---|---|---|
-| code-security-auditor | Threat modeling, auth review, vuln scan | opus |
-| backend-developer | API design, DB queries, server logic | sonnet |
-| frontend-developer | UI components, state, browser behavior | sonnet |
-| database-designer | Schema, migrations, indexes, query optimization | sonnet |
-| code-reviewer | Logic bugs, style, maintainability | opus |
-| code-debugger | Root cause analysis, failing tests | sonnet |
-| code-documenter | API docs, inline comments, README | sonnet |
+| Explore | Wide read-only search: where is X, what calls Y, map a directory | inherit |
+| general-purpose | A specified implementation unit, or log and failing-test triage | inherit |
+| code-security-auditor | Threat model or auth review wide enough to be its own track | opus |
+| code-reviewer | Fresh-context review of a checkpoint diff against the plan, read-only | inherit |
 
-These are starting points, not pins, and none of them is a reason to delegate on its own.
-Decide first whether the work is large, genuinely independent and parallelizable; if you
-could finish it in a handful of tool calls, do it yourself. Never spawn an agent to verify
-or double-check your own output. `smart-agent-spawner` owns the selection rules once you
-have decided to spawn, including effort level and the failure-escalation ladder. The Opus/Sonnet cost
-gap is ~1.7x, so prefer inheriting the session model over pinning a cheaper tier;
-downgrade only for genuinely mechanical work.
+Decide by the shape of the work, not by its size. Your context is the scarce resource:
+file dumps, search hits and logs that land in it stay there. Delegate work that reads a
+lot and returns a little (search, triage, review), and implementation units that have a
+plan and a check. Keep decisions, plans, small edits, and edits that depend on detail you
+already hold. Give each subagent one goal, the files or paths it needs, and the shape of
+the answer you want back (a file:line list, a diff and test result). Never spawn an agent
+to verify or double-check your own output. `smart-agent-spawner` owns the selection
+rules once you have decided to spawn, including effort level and the failure-escalation
+ladder. The Opus/Sonnet cost gap is about 1.3x, so prefer inheriting the session model over
+pinning a cheaper tier; downgrade only for genuinely mechanical work.
 
 Use opus whenever the task touches: auth, permissions, cryptography, multi-tenant data
 access, external integrations handling PII, or compliance scope.
@@ -50,14 +50,23 @@ access, external integrations handling PII, or compliance scope.
 
 ### New Feature
 ```
-1. Threat model -> code-security-auditor (identify risks before code)
-2. Plan -> write verifiable success criteria (Karpathy: goal-driven)
-3. Design -> schema (database-designer) + API contract (backend-developer)
-4. Implement -> /tdd (test-driven, loop until green)
-5. Review -> /fullreview --scope security,backend
-6. Commit -> present findings to user, fix CRITICAL/HIGH before committing
-7. Memory -> save session summary if significant work
+1. Threat model -> you; code-security-auditor only if the surface is wide
+2. Plan -> verifiable success criteria, split into small ordered checkpoints,
+   each small enough that the code it touches fits in one context
+3. User approves the plan (it lands in .agent/plan-*.md when .agent/ exists).
+   For a large feature, suggest /clear and build from that file in a fresh session
+4. Per checkpoint:
+   a. Build -> general-purpose subagent: one checkpoint, the plan, the files;
+      returns a diff and the test output (/tdd discipline, loop until green)
+   b. Review -> code-reviewer with the plan and the diff; fix every CRITICAL/HIGH,
+      rerun tests, re-review until verdict: approve (cap 3 rounds, then ask the user)
+   c. Commit -> present the diff, test output and review verdict; user approves
+5. Before release -> /fullreview --scope security,backend
+6. Memory -> save session summary if significant work
 ```
+
+Small feature (a handful of files, one checkpoint): skip the subagent build and do
+4a yourself. Keep 4b and 4c.
 
 ### Bug Fix
 ```
@@ -76,7 +85,7 @@ access, external integrations handling PII, or compliance scope.
 2. Scope -> identify exactly what changes and why (no adjacent cleanup)
 3. Refactor -> match existing style, one concern at a time
 4. Validate -> same test suite passes, no behavior change
-5. Review -> /fullreview --scope backend
+5. Review -> code-reviewer with the diff; confirm no behavior change
 6. Commit
 ```
 
@@ -91,7 +100,8 @@ access, external integrations handling PII, or compliance scope.
 
 ## Quality Gates (Non-Negotiable)
 
-- Pre-commit: /fullreview --scope security,backend
+- Pre-commit: code-reviewer on the checkpoint diff, verdict: approve
+- Before push or merge of a feature: /fullreview --scope security,backend
 - Before releasing to the customer: /fullreview (full 10-domain)
 - Any PR: /pre-push before creating
 - Security-sensitive file edits: apply threat-model checklist (hook injects this)
@@ -102,7 +112,7 @@ access, external integrations handling PII, or compliance scope.
 |---|---|
 | /tdd | Implementing any testable logic |
 | /debug | Any reported bug or failing test |
-| /fullreview --scope security,backend | Before committing (recommended) |
+| /fullreview --scope security,backend | Before pushing or merging a feature |
 | /fullreview | Before releasing to the customer |
 | /pre-push | Before creating any PR |
 | /diagram | Architecture, data flow, auth flow, remediation timeline |

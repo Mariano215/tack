@@ -6,6 +6,22 @@ existing profile needs.
 
 ## Unreleased
 
+- Delegation is decided by the shape of the work, not by call count. Work that
+  reads a lot and returns a little (search, log or test triage, review) and
+  specified implementation units go to a subagent, so the noise stays out of
+  the main context. Decisions, plans and small edits stay in the main thread.
+  Changed in `task-orchestrator`, `smart-agent-spawner` and the
+  `model-router-nudge` hook. The orchestrator roster now names agents that
+  exist instead of six that were never shipped.
+
+- New `code-reviewer` agent: a read-only, fresh-context reviewer of a
+  checkpoint diff against the plan. It flags only correctness, requirement and
+  trust-boundary gaps. `code-security-auditor` is now read-only too.
+- The orchestrator's New Feature workflow is a checkpoint loop: plan split
+  into small checkpoints; each is built by a subagent, reviewed by
+  `code-reviewer` until it approves, and committed only after the user
+  approves. Large features suggest `/clear` and build from the saved plan.
+
 - `smart-agent-spawner` effort guidance follows Opus 5.5: the default effort
   is `medium`, not `high`, and Opus 5.5 at `medium` beats Opus 5 at `high`, so
   the Opus tier now starts there. Thinking cannot be disabled at any effort
