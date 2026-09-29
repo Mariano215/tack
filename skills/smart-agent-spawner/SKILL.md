@@ -11,7 +11,7 @@ Automatically select the optimal Claude model (Opus, Sonnet, or Haiku) and, wher
 
 ## When This Skill Activates
 
-Applies automatically whenever you spawn agents via the `Agent` tool, `Task` tool, or `Workflow` tool's `agent()` calls. A `PreToolUse` hook (`hooks/model-router-nudge.sh`, matcher `Agent|Task|Workflow`) fires before every such call to remind you of these rules, so you don't need the user to ask.
+Applies automatically whenever you spawn agents via the `Agent` tool, `Task` tool, or `Workflow` tool's `agent()` calls. A `PreToolUse` hook (`hooks/model-router-nudge.sh`, matcher `Agent|Task|Workflow`) fires before every such call to remind you of these rules, so you don't need the user to ask. When an `Agent` or `Task` call names no `model`, the hook also pins the tier listed below for `Explore` (haiku) and for `Plan`, `code-reviewer` and `code-security-auditor` (opus). An explicit `model` always wins. The main session's model and effort cannot be changed by a hook. Only `/model`, `/effort` or a literal `ultrathink` in the prompt change them. A hook that injects `ultrathink` as context did not reliably raise thinking in a measured test.
 
 ## Model Selection Strategy
 

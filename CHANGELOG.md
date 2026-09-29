@@ -6,6 +6,13 @@ existing profile needs.
 
 ## Unreleased
 
+- The `model-router-nudge` PreToolUse hook now pins a model on an `Agent` or `Task`
+  call that names none: haiku for `Explore`, opus for `Plan`,
+  `code-reviewer` and `code-security-auditor`. An explicit model always wins.
+  Hooks cannot change the main session's model or effort, and an injected
+  `ultrathink` did not reliably raise thinking in a measured test, so the
+  orchestrator is left alone.
+
 - Delegation is decided by the shape of the work, not by call count. Work that
   reads a lot and returns a little (search, log or test triage, review) and
   specified implementation units go to a subagent, so the noise stays out of
