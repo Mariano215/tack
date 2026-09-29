@@ -4,7 +4,7 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-09-29)
 
 - The `model-router-nudge` PreToolUse hook now pins a model on an `Agent` or `Task`
   call that names none: haiku for `Explore`, opus for `Plan`,
