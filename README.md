@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.3.0-3B7A57"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.4.0-3B7A57"></a>
 </p>
 
 <p align="center">
@@ -145,6 +145,14 @@ On the Codex side the apply is gentler. It writes `$CODEX_HOME/<name>.config.tom
 and never replaces your base `config.toml`, merges a marked policy block into
 `AGENTS.md` rather than overwriting it, and backs up any skill it would collide
 with. Codex asks you to trust the harness hooks once, through `/hooks`.
+
+`CLAUDE.md` in your config dir is not replaced. The apply writes the engine
+instructions from `templates/CLAUDE.md` between two marker lines,
+`<!-- harness:begin ... -->` and `<!-- harness:end -->`, and refreshes only that
+block on later applies. Put your own instructions above or below the markers;
+anything inside them is overwritten. On the first apply over an existing file,
+the block goes on top, the old file is saved as `CLAUDE.md.harness-prev`, and
+the apply prints the `cp` command that undoes it.
 
 Back up first if you have hand-written hooks or commands. To keep specific skills
 across applies, list them one per line in `~/.claude/.harness-skills-keep`. Same

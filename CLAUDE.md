@@ -72,8 +72,10 @@ it until staged. Run `git add -A` first.
 `apply-profile.sh` copies `hooks ghost agents commands templates scripts
 output-styles` plus `verify-setup.sh` and `statusline-command.sh` from this repo
 into the config dir. `lib/` is never copied, so nothing in `lib/` can be shared
-with an installed script. A profile repo contributes only its `skills/` and its
-manifest.
+with an installed script. It also renders `templates/CLAUDE.md` between the
+`harness:begin` and `harness:end` markers in the config dir's `CLAUDE.md`
+(through `lib/render-claude-md.py`), and keeps every line outside them. A
+profile repo contributes only its `skills/` and its manifest.
 
 The Codex adapter (`adapters/codex/`) writes `$CODEX_HOME/<name>.config.toml`,
 a marked block in `AGENTS.md`, its skills under `$CODEX_HOME/skills` (backing

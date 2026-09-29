@@ -233,6 +233,14 @@ for f in verify-setup.sh statusline-command.sh; do
 done
 find "$CLAUDE/hooks" "$CLAUDE/ghost" "$CLAUDE/scripts" -name '*.sh' -o -name '*.py' 2>/dev/null | xargs -r chmod +x 2>/dev/null || true
 chmod +x "$CLAUDE/verify-setup.sh" "$CLAUDE/statusline-command.sh" 2>/dev/null || true
+
+# 2b. CLAUDE.md: templates/CLAUDE.md is the block between the harness markers.
+# Text outside the markers is the user's and survives every apply. Without this
+# the live file was kept by hand and drifted from the engine it described.
+# In an isolated config dir CLAUDE.md is a link to the shared file, and writing
+# through the link is intended: every profile renders the same engine block.
+python3 "$CORE_DIR/lib/render-claude-md.py" "$CORE_DIR/templates/CLAUDE.md" "$CLAUDE/CLAUDE.md" \
+  || echo "  CLAUDE.md not rendered (python3 failed), file left as it was"
 # Refresh the switcher itself. Only setup-core.sh installed tack, so a machine kept
 # running the tack it was first set up with: a fix to tack (like sync re-applying)
 # never arrived through a sync, which is exactly the update it was meant to

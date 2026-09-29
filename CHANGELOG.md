@@ -4,6 +4,27 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## 0.4.0 (2026-09-29)
+
+- `tack use` now writes `CLAUDE.md` in the config dir. The engine instructions
+  from `templates/CLAUDE.md` go between `<!-- harness:begin ... -->` and
+  `<!-- harness:end -->`, and each apply refreshes only that block. Text
+  outside the markers is yours and is kept, line endings included. Before this,
+  `templates/CLAUDE.md` was only copied to `templates/` and nothing wrote the
+  live file, so a hand-kept copy drifted from the engine.
+  **Existing installs:** the first apply over a `CLAUDE.md` you wrote puts the
+  block on top, saves the old file as `CLAUDE.md.harness-prev`, and prints the
+  undo command. Delete any of your sections that now repeat the block. A
+  `python3` failure leaves the file as it was and does not stop the apply.
+
+- `templates/CLAUDE.md` is now the managed block, not a starter file. It adds
+  the `code-reviewer` exception to the no-self-check rule, delegation by the
+  shape of the work, and a code lookup order (graphify, then LSP or tokensave,
+  then grep). The slash forms name the real skills: `/pre-push-auto-fix` and
+  `/document-with-goal`.
+
+- New `scripts/test-claude-md-render.sh`, run by `check.sh`.
+
 ## 0.3.0 (2026-09-29)
 
 - The `model-router-nudge` PreToolUse hook now pins a model on an `Agent` or `Task`
