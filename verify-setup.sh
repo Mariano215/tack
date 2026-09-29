@@ -170,6 +170,21 @@ if command -v jq >/dev/null 2>&1 && [ "$(jq -r '(.enabledPlugins // {})["claude-
     fi
   fi
 fi
+# language servers: an LSP plugin is only config that names a program. With the
+# program off PATH the plugin loads, starts nothing and says nothing, so edits
+# lose their type errors in silence. Warn-only: a re-apply cannot install it.
+if command -v jq >/dev/null 2>&1; then
+  while IFS= read -r p; do
+    case "$p" in
+      typescript-lsp@*) bin=typescript-language-server; fix="npm i -g typescript-language-server typescript" ;;
+      pyright-lsp@*)    bin=pyright-langserver; fix="npm i -g pyright" ;;
+      csharp-lsp@*)     bin=csharp-ls; fix="dotnet tool install --global csharp-ls, and add ~/.dotnet/tools to PATH" ;;
+      *) continue ;;
+    esac
+    if command -v "$bin" >/dev/null 2>&1; then ok "${p%%@*}: $bin on PATH"
+    else warn "${p%%@*} enabled but $bin is not on PATH, so edits get no diagnostics. Fix: $fix, then restart Claude Code"; fi
+  done < <(jq -r '(.enabledPlugins // {}) | to_entries[] | select(.value == true and (.key | test("-lsp@"))) | .key' "$S" 2>/dev/null | tr -d '\r')
+fi
 [ -f "$CLAUDE/.harness-active" ] && ok "active profile: $(cat "$CLAUDE/.harness-active")" || warn "no active profile recorded"
 
 echo ""

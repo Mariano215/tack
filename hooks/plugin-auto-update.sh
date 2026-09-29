@@ -142,4 +142,6 @@ if command -v uv >/dev/null 2>&1; then
 else
     pip install --upgrade graphifyy -q >/dev/null 2>&1
 fi
-graphify install >/dev/null 2>&1 || true
+# --platform: a plain install refreshes only the platform graphify detects, which
+# left the Claude skill 60 versions behind the package.
+graphify install --platform claude >/dev/null 2>&1 || true
