@@ -11,6 +11,8 @@ bin/tack text eol=lf
 # Extensionless launchers shipped inside skills, same shebang problem as *.sh
 skills/davinci-resolve/dr text eol=lf
 skills/fal/fal text eol=lf
+skills/executing-plans/scripts/* text eol=lf
+skills/subagent-driven-development/scripts/* text eol=lf
 
 # Windows-only, needs CRLF to run from Explorer
 *.ps1 text eol=crlf

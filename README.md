@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.2.0-3B7A57"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.3.0-3B7A57"></a>
 </p>
 
 <p align="center">
@@ -246,7 +246,7 @@ memory) sits at the top; anything specific to one agent sits under `providers`:
   "providers": {
     "claude": {
       "plugins": {
-        "superpowers@claude-plugins-official": true,
+        "feature-dev@claude-plugins-official": true,
         "pyright-lsp@claude-plugins-official": true
       },
       "env": { "SOME_FLAG": "1" },
@@ -358,10 +358,23 @@ The engine (`bin/tack`, `lib/`, `hooks/`, `verify-setup.sh`), one adapter per
 agent (`adapters/claude/`, `adapters/codex/`), a repo-local Codex plugin
 (`codex-marketplace/`) that marks Graphify output stale after edits and adds
 security context to sensitive changes, a set of general-purpose skills
-(goal-driven TDD, debugging and builds, docs, security audit, prompt-injection
-defense, code review, knowledge graphs, and `harness-builder` for new profiles),
+(docs, security audit, prompt-injection defense, code review, knowledge graphs,
+and `harness-builder` for new profiles),
 and `ghost`, a hook that blocks LLM-tell phrasing in `.txt`, `.docx` and `.pdf`
 writes. Edit `ghost/patterns.json` to make that list yours.
+
+The methodology skills from
+[superpowers](https://github.com/obra/superpowers) (MIT) ship vendored in
+`skills/`: brainstorming, writing-plans, executing-plans,
+subagent-driven-development, systematic-debugging, test-driven-development,
+requesting-code-review, verification-before-completion,
+finishing-a-development-branch and using-git-worktrees. The skill router sends
+feature, bug and test-first prompts to them. The superpowers plugin itself
+stays off: its SessionStart bootstrap tells the model to invoke a skill on
+"even a 1% chance", which over-triggers on Claude 5 models. Leave
+`superpowers@claude-plugins-official` out of your manifests. To take a newer
+upstream release, run `scripts/vendor-superpowers.sh <plugin dir>`;
+`skills/SUPERPOWERS.md` lists the local patches.
 
 Release notes live in [CHANGELOG.md](CHANGELOG.md).
 

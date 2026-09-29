@@ -25,13 +25,18 @@ Do not add a verification pass of your own. The model already re-checks its
 work, so a second "now double-check" step costs tokens and changes nothing. Run
 the checks that produce evidence (tests, lint, a build) and report what they
 printed.
+The checklists inside the methodology skills (spec, plan and implementer
+self-review) are not that second pass: they check a written artifact against
+named items such as placeholders, spec coverage and type names. Run them as
+written.
 
 # Skills
 When a request matches a skill description in the skills list, invoke that
 skill instead of improvising. Slash forms work directly: /pre-push /document
 /graphify /handoff /harness-builder.
-For test-driven work, debugging or a new feature, invoke the matching
-superpowers skill for the methodology, then set the built-in /goal with a
+For a new feature use brainstorming, then writing-plans, then executing-plans
+or subagent-driven-development. For a bug use systematic-debugging, and for
+test-first work test-driven-development. Then set the built-in /goal with a
 condition the transcript can prove and a turn clause to bound it (/goal takes
 plain text, no flags). Never claim success without the command output that
 proves it.

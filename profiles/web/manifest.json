@@ -13,7 +13,6 @@
   "providers": {
     "claude": {
       "plugins": {
-        "superpowers@claude-plugins-official": true,
         "feature-dev@claude-plugins-official": true,
         "frontend-design@claude-plugins-official": true,
         "chrome-devtools-mcp@claude-plugins-official": true,

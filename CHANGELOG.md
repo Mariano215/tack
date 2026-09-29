@@ -4,7 +4,7 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
-## Unreleased
+## 0.3.0 (unreleased)
 
 - The `model-router-nudge` PreToolUse hook now pins a model on an `Agent` or `Task`
   call that names none: haiku for `Explore`, opus for `Plan`,
@@ -12,6 +12,59 @@ existing profile needs.
   Hooks cannot change the main session's model or effort, and an injected
   `ultrathink` did not reliably raise thinking in a measured test, so the
   orchestrator is left alone.
+
+- New `graphify-session` SessionStart hook. With `GRAPHIFY_AUTO=1` in a
+  profile's env, it builds or refreshes the graphify code graph in the repo
+  (AST only, no LLM, runs detached) and tells the model to query the graph
+  first, the LSP tool for exact symbols, and grep last. It keeps
+  `graphify-out/` out of commits through `.git/info/exclude`. Off by default.
+- The stale-graph note after a write now names `graphify update .` (no LLM)
+  instead of the LLM-backed `/graphify --update`.
+- The daily update runs `graphify install --platform claude`, so the Claude
+  skill tracks the installed package.
+
+- `verify-setup.sh` warns when an enabled LSP plugin (TypeScript, Pyright,
+  C#) has no server program on PATH, and prints the install command. Before,
+  the plugin loaded, started nothing, and edits lost their diagnostics with
+  no message.
+
+- The daily update no longer pulls core past the profile's pin. It ran
+  `submodule update --remote`, then re-applied through `install.sh`, which
+  snaps core back to the pin: the pull was thrown away and the profile repo
+  was left dirty. Core now moves only through a pin bump (`tack sync --push`).
+
+- The skill router skips background-task notifications, which pass through
+  `UserPromptSubmit` and sent the model to graphify or document-with-goal on
+  agent reports with no request from the user. The pre-push,
+  knowledge-graph, tdd, bugfix, docs and codebase-review patterns now need an
+  action plus an object, or a bug-report shape ("crashes", "is failing"),
+  instead of a bare noun. A replay of 1,500 real prompts went from 58 matches
+  at about 53% wrong to 38 with about 5 doubtful. `test-skill-routes.sh`
+  carries the real misfires as negative cases.
+
+- The superpowers methodology skills are vendored from 6.4.1 by
+  `scripts/vendor-superpowers.sh`: brainstorming, writing-plans,
+  executing-plans, subagent-driven-development, systematic-debugging,
+  test-driven-development, requesting-code-review,
+  verification-before-completion, finishing-a-development-branch and
+  using-git-worktrees. The plugin's SessionStart bootstrap, which orders a
+  skill on "even a 1% chance" and over-triggers on Claude 5 models, is left
+  out. Local patches: the brainstorming description drops "You MUST use",
+  and subagent-driven-development defers model tier and its retry cap to
+  `smart-agent-spawner` (3 rounds, not 5). See `skills/SUPERPOWERS.md`.
+- `goal-iteration` is removed; it only pointed at those skills. Routes go to
+  `brainstorming`, `systematic-debugging` and `test-driven-development`, and
+  the `verify-setup.sh` router probe follows.
+- The `dev` and `web` profiles no longer enable
+  `superpowers@claude-plugins-official`. **Profile action:** remove it from
+  your own manifest too, or the bootstrap comes back alongside the vendored
+  skills.
+- `templates/CLAUDE.md` points at the vendored skills by name and says their
+  spec, plan and implementer self-review checklists are artifact checks, not
+  the second verification pass it forbids.
+- Not ported from the private engine: rendering `templates/CLAUDE.md` into
+  the live CLAUDE.md on every apply. Here the template is a user-owned
+  starter, and tack never writes the live CLAUDE.md.
 
 - Delegation is decided by the shape of the work, not by call count. Work that
   reads a lot and returns a little (search, log or test triage, review) and

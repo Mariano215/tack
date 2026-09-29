@@ -24,7 +24,7 @@ Dispatch parallel agent teams across every domain that matters, consolidate find
 
 The agent running this skill must:
 
-1. **Invoke** `superpowers:dispatching-parallel-agents` and `superpowers:verification-before-completion` skills up-front (they govern parallel dispatch and the "claim clean only with evidence" gate).
+1. **Invoke** `verification-before-completion` up front. It governs the "claim clean only with evidence" gate. Dispatch the domain agents in parallel, in one message.
 2. **Track progress** via TaskCreate/TaskUpdate with one task per loop. Mark in_progress when starting, completed when done. Never claim "clean" without running the verification command in the same message.
 3. **Capture baseline** before any review: detect and run the project's typecheck and test commands (e.g. `npm run typecheck && npm test`, `pytest`, `cargo test`, `go test ./...`), save exit codes, save test counts. Abort with a clear message if the baseline is already broken and tell the user to fix the baseline first.
 4. **Dispatch review agents in parallel** in a single message with multiple Agent tool calls. Each agent is read-only — it produces findings, it does NOT edit code. The coordinator does all edits.

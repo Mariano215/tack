@@ -60,10 +60,10 @@ for f in "$CLAUDE/hooks/skill-router.sh" "$CLAUDE/statusline-command.sh" "$CLAUD
 done
 [ -z "$crlf" ] && ok "scripts have LF endings" || err "CRLF line endings:$crlf (re-clone with the repo's .gitattributes, or: sed -i 's/\r$//' <file>)"
 
-# router probe: a bug prompt must route to goal-iteration (tests the hook, not skill presence)
+# router probe: a bug prompt must route to systematic-debugging (tests the hook, not skill presence)
 if [ -x "$CLAUDE/hooks/skill-router.sh" ]; then
   out="$(SKILL_ROUTES_FILE="$CLAUDE/hooks/skill-routes.json" bash "$CLAUDE/hooks/skill-router.sh" <<<'{"prompt":"the login form is broken and failing"}' 2>/dev/null)"
-  echo "$out" | grep -q "goal-iteration" && ok "router probe routes bug -> goal-iteration" || warn "router probe did not match"
+  echo "$out" | grep -q "systematic-debugging" && ok "router probe routes bug -> systematic-debugging" || warn "router probe did not match"
 fi
 
 # router targets: every skill named in skill-routes.json should be reachable.
