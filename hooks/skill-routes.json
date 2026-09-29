@@ -4,49 +4,49 @@
   "routes": [
     {
       "id": "pre-push",
-      "pattern": "(ready to push|can i push|safe to push|before (i|we) push|pre[- ]?push|push (this|it|to (origin|main|master)))",
+      "pattern": "(ready to push|can i push|safe to push|before (i|we) push|pre[- ]?push|\\b(can you|could you|let'?s|please|now|go ahead and|then) push\\b|^\\s*push (it|this|the (branch|changes|fix|commits?))\\b(?! out| on)|^\\s*push to (origin|main|master|remote|github)\\b|push (it|this|the (branch|changes|fix)) (up )?to (origin|main|master|remote|github))",
       "skill": "pre-push-auto-fix",
       "hint": "Run quality checks and auto-fix before any push (max 3 iterations)."
     },
     {
       "id": "knowledge-graph",
-      "pattern": "\\bknowledge graph\\b|\\bgraphify\\b",
+      "pattern": "\\b(build|create|make|generate|update|refresh|rebuild)\\b.{0,40}\\b(knowledge graph|code graph|graphify graph)\\b|\\b(build|rebuild|refresh|update) the graph\\b|\\bgraphify (this|the|it|on)\\b",
       "skill": "graphify",
-      "hint": "Build/update the knowledge graph via /graphify. For a mechanical call-graph or symbol lookup only (who calls X), use tokensave instead."
+      "hint": "Build or refresh the graph with `graphify update .` (AST only, no LLM), or /graphify for docs and images. For a question about the code, run `graphify query` instead of rebuilding."
     },
     {
       "id": "stuck-escalation",
       "pattern": "(still (broken|failing|not working)|tried .{0,20}(times|again)|keeps (failing|breaking|crashing)|can.?t (fix|figure)|(3rd|4th|third|fourth) (time|attempt)|no luck)",
-      "skill": "goal-iteration",
-      "hint": "Repeated failures detected. Invoke superpowers:systematic-debugging if it has not run; after three failed fixes it stops and questions the architecture rather than trying a fourth. If the work has a checkable finish line, set /goal with a turn clause. Never start an unattended loop without user confirmation."
+      "skill": "systematic-debugging",
+      "hint": "Repeated failures. Follow systematic-debugging: after three failed fixes it stops and questions the architecture instead of trying a fourth. If the work has a checkable finish line, set /goal with a turn clause. Never start an unattended loop without user confirmation."
     },
     {
       "id": "tdd",
-      "pattern": "\\b(tdd|test[- ]driven|test[- ]first|with (unit )?tests|test coverage)\\b",
-      "skill": "goal-iteration",
-      "hint": "Invoke superpowers:test-driven-development for the red-green-refactor discipline, then set /goal with a condition the test output proves."
+      "pattern": "\\b(tdd|test[- ]driven)\\b|\\b(write|add)\\b.{0,20}\\btests? first\\b|\\bwith (unit )?tests\\b|\\btest coverage\\b",
+      "skill": "test-driven-development",
+      "hint": "Red, green, refactor, then set /goal with a condition the test output proves."
     },
     {
       "id": "bugfix",
-      "pattern": "\\b(bug|broken|not working|failing|fails|crash(es|ing)?|regression|stack ?trace)\\b",
-      "skill": "goal-iteration",
-      "hint": "Invoke superpowers:systematic-debugging: root cause before any fix, one hypothesis at a time."
+      "pattern": "\\b(fix|debug|investigate|diagnose|track down)\\b.{0,40}\\b(bug|crash|exception|failure|failing|broken|regression)\\b|\\b(crash(es|ed|ing)?|fails|failed|is not working|is failing|are failing|isn'?t working|is broken|are broken|keeps? (failing|crashing)|throws? an? (error|exception))\\b|\\b(there'?s|there is|found|have) an? bug\\b|\\btraceback\\b",
+      "skill": "systematic-debugging",
+      "hint": "Root cause before any fix, one hypothesis at a time."
     },
     {
       "id": "feature",
       "pattern": "\\b(build|create|implement|add|new)\\b.{0,60}\\bfeature\\b|\\bfeature\\b.{0,30}\\b(build|implement)\\b",
-      "skill": "goal-iteration",
-      "hint": "Invoke superpowers:brainstorming for design and approval first, then implement test-first. Do not write code before the human approves the design."
+      "skill": "brainstorming",
+      "hint": "Design and approval first, then writing-plans, then test-first implementation. No code before the human approves the design."
     },
     {
       "id": "docs",
-      "pattern": "\\b(documentation|readme|changelog|api docs|update (the )?docs|document (this|the))\\b",
+      "pattern": "\\b(update|write|generate|refresh|improve|document)\\b.{0,30}\\b(docs|documentation|readme|changelog|api docs)\\b|\\bdocument (this|the)\\b",
       "skill": "document-with-goal",
       "hint": "Generate and verify docs until complete (max 5 iterations, 15m)."
     },
     {
       "id": "codebase-review-agentic",
-      "pattern": "\\b(review|evaluate|assess)\\b.{0,50}\\b(codebase|repo(sitory)?|code base)\\b",
+      "pattern": "\\b(review|evaluate|assess)\\b (the |this |our )?(whole |entire |full )?(codebase|code base)\\b|\\b(review|evaluate|assess) (this|our) repo(sitory)?\\b|\\b(full|comprehensive)\\b.{0,20}\\breview\\b.{0,30}\\b(codebase|code base|repo(sitory)?)\\b",
       "skill": "fullreview",
       "hint": "Run /fullreview. If the product under review is itself agentic (LLM SDK calls, agent loops, MCP, tool schemas, prompt files), fullreview adds domain 11 (twelve-primitive agentic harness review, scored HML 0-5 against the Agent Harness Maturity Specification) automatically."
     },

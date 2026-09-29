@@ -19,7 +19,11 @@ jq -c --slurpfile cfg "$ROUTES" '
   if ($cfg[0].enabled // true) != true then empty
   else
     (.prompt // "") as $p
-    | if ($p | startswith("/")) or (($p | length) < 8) then empty
+    # A background-task notification arrives through this hook too, with no
+    # request from the user in it. Routing on its text sent the model to
+    # graphify and document-with-goal on agent reports that named those words.
+    | if ($p | startswith("/")) or (($p | length) < 8)
+         or ($p | test("<task-notification>|^\\s*\\[SYSTEM NOTIFICATION|^\\s*<system-reminder>")) then empty
       else
         ( [ $cfg[0].routes[]
             | select(. as $r | $p | test($r.pattern; "i")) ]

@@ -88,7 +88,11 @@ if [ -n "$ACTIVE" ] && [ -d "$PROFILE_DIR/.git" ]; then
     before_repo=$(git -C "$PROFILE_DIR" rev-parse HEAD 2>/dev/null)
     before_core=$(git -C "$PROFILE_DIR/core" rev-parse HEAD 2>/dev/null)
     git -C "$PROFILE_DIR" pull --ff-only >/dev/null 2>&1
-    git -C "$PROFILE_DIR" submodule update --init --remote >/dev/null 2>&1
+    # No --remote: install.sh snaps core back to the pin, so pulling core past
+    # it here was thrown away by the re-apply and left the repo dirty. Core
+    # moves only through a pin bump, which tack sync commits and pushes; this
+    # step picks up bumps pushed from other machines.
+    git -C "$PROFILE_DIR" submodule update --init >/dev/null 2>&1
     after_repo=$(git -C "$PROFILE_DIR" rev-parse HEAD 2>/dev/null)
     after_core=$(git -C "$PROFILE_DIR/core" rev-parse HEAD 2>/dev/null)
     if [ "$before_repo" != "$after_repo" ] || [ "$before_core" != "$after_core" ]; then

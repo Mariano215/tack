@@ -53,6 +53,46 @@ add test coverage for the crash|tdd
 please explain how this module is organised|
 summarize the meeting notes for me|
 rename this variable to something clearer|
+# Real misfires replayed from history. Each one fired a route it should not.
+run graphify install on the laptop|
+check which graphify resolves on PATH|
+Graphify should be the default with grep as the fallback, let's update it|
+do we need superpowers with the latest 5.5 versions and why did we disable it|
+what was the LiteLLM API key we used last week|
+discard the README change and merge the PR|
+push it out on linkedin tomorrow|
+review the repo so we have only what we need|
+explain the architecture of the billing service|
+# Background-task notifications carry no user request.
+<task-notification> Agent "Review core harness engine" finished: update the docs, fix the bug, run graphify </task-notification>|
+[SYSTEM NOTIFICATION - NOT USER INPUT] agent finished, the readme is broken|
+# More positives for the tightened patterns.
+push this to origin when checks pass|pre-push
+refresh the code graph after the refactor|knowledge-graph
+write the tests first, then the parser|tdd
+fix the crash in the upload handler|bugfix
+the export job is failing on large files|bugfix
+document the retry behavior in the readme|docs
+do a full review of the repo before we ship|codebase-review-agentic
+review this repository for maintainability|codebase-review-agentic
+# Common phrasings the first tightening missed (review of 2026-09-29).
+push it now|pre-push
+can you push this branch|pre-push
+push the fix to origin|pre-push
+push to github|pre-push
+the app crashes on startup|bugfix
+login is not working after the deploy|bugfix
+the build fails on main|bugfix
+there's a bug in the login flow|bugfix
+graphify this repo|knowledge-graph
+rebuild the graph after the refactor|knowledge-graph
+# ...and the new false positives it created.
+# A failed push is a bug report, not a request to push.
+the push to main failed yesterday, what happened|bugfix
+why is the regression test suite so slow|
+remove the stack trace from the log output|
+give me a comprehensive review of the PR|
+the full review agent left comments, summarize them|
 # Guard rails in the router itself.
 /commit these changes now|
 hi|
