@@ -1,0 +1,23 @@
+{
+  "schema_version": 2,
+  "name": "design",
+  "description": "UI and brand design: design system first, guardrail audits, vendored components, screenshot verify loop",
+  "caveman": "off",
+  "mcp": [
+    "playwright"
+  ],
+  "memory": {
+    "enabled": false
+  },
+  "providers": {
+    "claude": {
+      "plugins": {
+        "playwright@claude-plugins-official": true,
+        "frontend-design@claude-plugins-official": true
+      },
+      "env": {}
+    },
+    "codex": {}
+  },
+  "notes": "Seed for a design profile. The skills (design-system, design-audit, hig-rules, tone-of-voice, design-verify) live in the profile repo, not here. Brand data stays machine-local: DESIGN.md at the project root, or DESIGN_BRANDS_DIR (default ~/.design-brands/<brand>/). Run it next to another profile with `tack shell design`."
+}

@@ -4,6 +4,11 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## Unreleased
+
+- New seed manifest `profiles/design`: Playwright and frontend-design, for UI
+  work checked against a brand DESIGN.md. The skills live in the profile repo.
+
 ## 0.4.0 (2026-09-29)
 
 - `tack use` now writes `CLAUDE.md` in the config dir. The engine instructions
