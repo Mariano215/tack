@@ -6,6 +6,17 @@ existing profile needs.
 
 ## Unreleased
 
+- Prompt audit of the skills, agents and output style: fixed conflicts, dead
+  references, expired dates, `trigger:` frontmatter that never routed, emoji
+  and em-dash report templates, and the update suppressor in the Plain style.
+  The vendor script carries the local patches for the vendored skills.
+- Status line: cache segment (hit ratio and time until the prompt cache goes
+  cold, with the miss cause), session cost and time, a context sparkline, and
+  green, yellow and red percentages. `TACK_STATUSLINE=compact`, a
+  `.statusline-mode` file, or `COLUMNS` under 100 gives a one-line layout. One
+  `jq` call instead of about twenty, so a run takes a fifth of the time.
+  `statusLine.refreshInterval` is 30 so the countdown ticks while idle.
+  Needs Claude Code 2.1.251 for `prompt_cache`; older versions just omit it.
 - New seed manifest `profiles/design`: Playwright and frontend-design, for UI
   work checked against a brand DESIGN.md. The skills live in the profile repo.
 

@@ -15,9 +15,11 @@ Applies automatically whenever you spawn agents via the `Agent` tool, `Task` too
 
 ## Model Selection Strategy
 
+**Default: omit `model` so the agent inherits the session model.** Pin a tier only for the exceptions below. Explicit user preference always wins.
+
 ### Opus, most capable, highest cost
 
-Use for critical decisions that are hard to reverse or require deep reasoning.
+Pin for critical decisions that are hard to reverse or require deep reasoning.
 
 Agent types:
 - `Plan` - architecture and implementation planning
@@ -34,11 +36,11 @@ Task characteristics:
 - Performance optimization requiring deep analysis
 - Migration planning between technologies
 
-Cost: Opus 5.5 runs $4/$20 per MTok, roughly 1.3x Sonnet 5's $3/$15, not the 5x gap older models had. Opus is also the default session model. Don't downgrade a spawn to save cost unless the task is genuinely mechanical.
+Cost: Opus 5.5 runs $4/$20 per MTok, roughly 1.3x Sonnet 5's $3/$15, not the 5x gap older models had. Don't downgrade a spawn to save cost unless the task is genuinely mechanical.
 
-### Sonnet, balanced, default choice
+### Sonnet, balanced
 
-Use for most implementation work and standard development tasks.
+Pin when the session model is Opus and the work is routine implementation or standard development, and speed or cost matters. Otherwise inherit.
 
 Agent types:
 - All `*-developer` agents (backend-developer, frontend-developer, python-developer, etc.)
@@ -55,11 +57,11 @@ Task characteristics:
 - UI/UX implementation
 - Test writing and fixes
 
-Cost: $3/$15 per MTok ($2/$10 introductory through 2026-08-31). 1M context. Good value, but the gap to Opus is small enough that Opus is the right call whenever quality matters.
+Cost: $3/$15 per MTok. 1M context. The gap to Opus is small, so inherit instead of pinning Sonnet when quality matters.
 
 ### Haiku, fastest, lowest cost
 
-Use for simple, mechanical tasks with clear requirements.
+Pin for simple, mechanical tasks with clear requirements.
 
 Agent types:
 - `Explore` - file searches and codebase exploration
@@ -98,10 +100,9 @@ Default when unset is `medium` on Opus 5.5 and `high` on every other model that 
   Current models respect low effort strictly and scope work to exactly what was asked,
   so raise the tier rather than prompting around shallow reasoning.
 
-Effort names do not mean the same amount of thinking across models. Opus 4.8 wanted
-`xhigh`, Opus 5 wanted `high`, Opus 5.5 wants `medium`. A caller that pins `high` or
-`xhigh` by default is carrying an older setting forward, and Anthropic's guidance is to
-re-measure rather than reuse it.
+Effort names do not mean the same amount of thinking across models. A caller that pins
+`high` or `xhigh` by default is carrying an older setting forward: re-measure rather than
+reuse it.
 
 Effort controls how much the agent thinks, not how long its visible answer is. On Opus 5.5,
 lowering effort does not reliably shorten the reply. If a spawned agent returns more prose
@@ -183,8 +184,8 @@ Don't change models mid-task without a reason (a failure, or a scope change).
 
 ## Summary
 
-Critical decisions and reviews use Opus. Implementation and development use Sonnet. Searches and simple tasks use Haiku. On failure, escalate one tier and one effort step, retry, cap at 3 attempts, then ask the user.
+Inherit the session model by default. Pin Opus for critical decisions and reviews, Haiku for searches and simple tasks, Sonnet for routine implementation when the session runs Opus. On failure, escalate one tier and one effort step, retry, cap at 3 attempts, then ask the user.
 
-Key principle: pick the tier that can reliably accomplish the task. The Opus/Sonnet price gap is now ~1.3x, not 5x, so cost is a weak reason to downgrade. When in doubt, inherit the session model rather than pinning a cheaper one.
+Key principle: pick the tier that can reliably accomplish the task. The Opus/Sonnet price gap is about 1.3x, so cost is a weak reason to downgrade. When in doubt, inherit.
 
 `claude-fable-5` also exists ($10/$50 per MTok, above Opus tier, thinking always on). It is not part of the normal ladder. Use it only when the user names it explicitly.

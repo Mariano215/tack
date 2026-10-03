@@ -1,7 +1,6 @@
 ---
 name: gauntlet-loop
-description: Run a Gauntlet Loop (Matt Shumer's method), driving work toward a concrete reference standard with paired builder and critic agents that loop until the output matches the bar. Use when the user says "gauntlet loop", "/gauntlet", "run a gauntlet", "make this match [reference]", "keep looping until it looks like X", or asks for output judged against a named example rather than a checklist. Best for visual, creative, or taste-driven work (game feel, landing pages, prose voice, design polish) where "done" is a comparison, not a passing test. Not for work with an objective pass/fail signal, use /tdd or /debug there.
-trigger: /gauntlet
+description: Run a Gauntlet Loop (Matt Shumer's method), driving work toward a concrete reference standard with paired builder and critic agents that loop until the output matches the bar. Use when the user says "gauntlet loop", "/gauntlet", "run a gauntlet", "make this match [reference]", "keep looping until it looks like X", or asks for output judged against a named example rather than a checklist. Best for visual, creative, or taste-driven work (game feel, landing pages, prose voice, design polish) where "done" is a comparison, not a passing test. Not for work with an objective pass/fail signal, use test-driven-development or systematic-debugging there.
 ---
 
 # Gauntlet Loop

@@ -62,16 +62,23 @@ def patch(rel, old, new, regex=False):
 # Claude 5 prompting guide: "You MUST use X" over-triggers, and check.sh bans it.
 patch("brainstorming/SKILL.md", '"You MUST use this before any creative work - creating features', '"Use before creative work - creating features')
 
-# smart-agent-spawner owns model tier and the retry cap (3 attempts, one tier
-# up per retry, then the user). Upstream picks its own tiers and allows 5 rounds.
+# smart-agent-spawner owns model tier. Upstream picks its own tiers. The fix
+# loop stays at upstream's five rounds (it is a review loop, not a spawn retry).
 patch("subagent-driven-development/SKILL.md", r"## Model Selection\n.*?(?=## The Task Loop)",
       "## Model Selection\n\nsmart-agent-spawner picks the model tier for every dispatch here:\nimplementers, reviewers, fix rounds and the final review. Name the model it\ngives on each call.\n\n", regex=True)
-patch("subagent-driven-development/SKILL.md", "fix-loop rounds 1-3 resume this agent.", "fix-loop rounds 1-2 resume this agent.")
-patch("subagent-driven-development/SKILL.md", "Five rounds maximum per task:", "Three rounds maximum per task, the smart-agent-spawner cap:")
-patch("subagent-driven-development/SKILL.md", "**Rounds 1-3 — resume the original implementer.**", "**Rounds 1-2 — resume the original implementer.**")
-patch("subagent-driven-development/SKILL.md", "**Rounds 4-5 — dispatch a fresh implementer on a more capable model** (per\nModel Selection)", "**Round 3 — dispatch a fresh implementer one tier up** (per\nsmart-agent-spawner)")
-patch("subagent-driven-development/SKILL.md", "that survives three resumes", "that survives two resumes")
-patch("subagent-driven-development/SKILL.md", "When round 5's re-review", "When round 3's re-review")
+# Prompt audit 2026-10-03. The review default must not be the HEAD~1 that
+# subagent-driven-development forbids, the reviewer is the repo's code-reviewer
+# agent, and review runs at a checkpoint or commit gate (templates/CLAUDE.md).
+patch("requesting-code-review/SKILL.md", "BASE_SHA=$(git rev-parse HEAD~1)  # or: git merge-base origin/main HEAD", "BASE_SHA=$(git merge-base origin/main HEAD)  # or the HEAD recorded before the task started")
+patch("requesting-code-review/SKILL.md", "Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)", "Dispatch the `code-reviewer` agent, filling the template at [code-reviewer.md](code-reviewer.md)")
+patch("requesting-code-review/SKILL.md", "**Mandatory:**\n- After each task in subagent-driven development\n- After completing major feature\n- Before merge to main\n\n**Optional but valuable:**\n- When stuck (fresh perspective)\n- Before refactoring (baseline check)\n- After fixing complex bug\n", "**At a checkpoint or commit gate:**\n- After each task in subagent-driven development\n- After completing a major feature\n- Before merge to main\n")
+patch("requesting-code-review/SKILL.md", "**Core principle:** Review early, review often.\n\n", "")
+# systematic-debugging names a Phase 4.5 that does not exist, and an "Ultra-think"
+# keyword from the old extended-thinking era. Thinking is always on now.
+patch("systematic-debugging/SKILL.md", "(see Phase 4.5)", "(see Phase 4, step 5)")
+patch("systematic-debugging/SKILL.md", '- "Ultra-think this" - Question fundamentals, not just symptoms\n', "")
+# brainstorming points at a skill that is not installed.
+patch("brainstorming/SKILL.md", "- Use elements-of-style:writing-clearly-and-concisely skill if available\n", "")
 PY
 
 left="$(grep -rn 'superpowers:' $(printf "$REPO/skills/%s " $SKILLS) 2>/dev/null || true)"
@@ -93,10 +100,14 @@ orders a skill on a "1% chance" and over-triggers on Claude 5 models,
 writing-skills, which is for skill authors, and upstream test fixtures.
 
 Local patches (listed in the script): the brainstorming description drops
-"You MUST use", and subagent-driven-development defers model tier and its
-retry cap to smart-agent-spawner (3 rounds, not 5). The spec, plan and
-implementer self-review checklists stay: they check a written artifact
-against named items, and templates/CLAUDE.md says so.
+"You MUST use", and subagent-driven-development defers model tier to
+smart-agent-spawner (the five-round fix loop stays as upstream ships it).
+requesting-code-review dispatches the code-reviewer agent at a checkpoint and
+defaults its base to the merge-base, systematic-debugging drops a dead Phase 4.5
+pointer and the "Ultra-think" keyword, and brainstorming drops a pointer to a
+skill that is not installed. The spec, plan and implementer self-review
+checklists stay: they check a written artifact against named items, and
+templates/CLAUDE.md says so.
 
 Skills: $SKILLS
 

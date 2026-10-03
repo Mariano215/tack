@@ -4,7 +4,7 @@ description: Use when the user invokes /repro or asks to iterate a verification 
 trigger: /repro
 ---
 
-# /repro — Bounded Iterative Loop
+# /repro : Bounded Iterative Loop
 
 Run a task repeatedly until it passes or hits the iteration cap.
 
@@ -50,12 +50,12 @@ iter 1: [one-line summary]
 iter 2: [one-line summary]
 ...
 ───────────────────────────────────────
-remaining issues: [list, or "none — clean"]
+remaining issues: [list, or "none : clean"]
 ```
 
 ## Example
 
-User: `/repro review all code for fake, mock, or temp data — at most 5 times`
+User: `/repro review all code for fake, mock, or temp data : at most 5 times`
 
 Announce:
 ```

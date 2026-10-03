@@ -1,7 +1,6 @@
 ---
 name: handoff
 description: Generate a structured handoff document (project identity, current state, architecture map, recent decisions, next steps/risks) so a new AI session or teammate can pick up full context fast. Use when the user types /handoff, asks to "write a handoff", "hand this off", "prep a handoff doc", or is wrapping up a session and wants context preserved for next time.
-trigger: /handoff
 ---
 
 # /handoff

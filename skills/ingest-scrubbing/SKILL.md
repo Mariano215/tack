@@ -4,14 +4,8 @@ description: >-
   Sanitize documents at ingestion time, before they're embedded and indexed
   in a RAG/vector store. Different attack surface from prompt-injection-defense:
   the poison sits in the corpus and fires whenever a later, unrelated query
-  happens to retrieve it.
-trigger:
-  - "ingest pipeline"
-  - "document ingestion"
-  - "embed documents"
-  - "vector store"
-  - "rag pipeline"
-  - "knowledge base upload"
+  happens to retrieve it. Use when building an ingest pipeline, document ingestion,
+  embedding documents, a vector store, a RAG pipeline, or a knowledge base upload.
 ---
 
 # Ingest Scrubbing

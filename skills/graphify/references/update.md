@@ -2,7 +2,7 @@
 
 Load this only when the user passed `--update` or `--cluster-only`. A first-time full build never reads this file.
 
-**Known upstream fragility** (open issues on `safishamsi/graphify` as of this writing): `#2210`, incremental extract can falsely mark unchanged files as deleted, and `#2211`, incremental rebuild can drop cross-file references between Markdown docs. Neither is fixable from this skill wrapper. Mitigate by not relying on `--update` indefinitely, run an occasional full rebuild (drop `graphify-out/` and rebuild, or the equivalent full-build invocation) to reset from a clean state.
+**Known upstream fragility** (in `safishamsi/graphify`): incremental extract can falsely mark unchanged files as deleted, and incremental rebuild can drop cross-file references between Markdown docs. Neither is fixable from this skill wrapper. Mitigate by not relying on `--update` indefinitely, run an occasional full rebuild (drop `graphify-out/` and rebuild, or the equivalent full-build invocation) to reset from a clean state.
 
 ## For --update (incremental re-extraction)
 

@@ -9,10 +9,14 @@ orders a skill on a "1% chance" and over-triggers on Claude 5 models,
 writing-skills, which is for skill authors, and upstream test fixtures.
 
 Local patches (listed in the script): the brainstorming description drops
-"You MUST use", and subagent-driven-development defers model tier and its
-retry cap to smart-agent-spawner (3 rounds, not 5). The spec, plan and
-implementer self-review checklists stay: they check a written artifact
-against named items, and templates/CLAUDE.md says so.
+"You MUST use", and subagent-driven-development defers model tier to
+smart-agent-spawner (the five-round fix loop stays as upstream ships it).
+requesting-code-review dispatches the code-reviewer agent at a checkpoint and
+defaults its base to the merge-base, systematic-debugging drops a dead Phase 4.5
+pointer and the "Ultra-think" keyword, and brainstorming drops a pointer to a
+skill that is not installed. The spec, plan and implementer self-review
+checklists stay: they check a written artifact against named items, and
+templates/CLAUDE.md says so.
 
 Skills: brainstorming writing-plans executing-plans subagent-driven-development systematic-debugging test-driven-development requesting-code-review verification-before-completion finishing-a-development-branch using-git-worktrees
 

@@ -18,11 +18,11 @@ This skill generates comprehensive documentation with automatic iteration using 
 
 ### Automatic Invocation by Claude:
 Claude should automatically use this skill when:
-- ✅ User says "update the documentation"
-- ✅ User requests "generate docs" or "document this"
-- ✅ After significant code changes when docs mentioned
-- ✅ User asks "are the docs up to date?"
-- ❌ Do NOT auto-invoke for: code-only changes, mid-development
+- User says "update the documentation"
+- User requests "generate docs" or "document this"
+- After significant code changes when docs mentioned
+- User asks "are the docs up to date?"
+- Do NOT auto-invoke for: code-only changes, mid-development
 
 **Examples triggering automatic use:**
 - "Update the README"
@@ -91,37 +91,13 @@ success at the ceiling.
 
 ## Documentation Checklist
 
-### README.md Must Have:
-- [ ] Project description
-- [ ] Installation instructions
-- [ ] Quick start / basic usage
-- [ ] Key features list
-- [ ] Configuration options
-- [ ] Links to detailed docs
-- [ ] License information
-- [ ] Contributing guidelines (if open source)
+Scope the check to what the change touches and to the docs the repo already has. Do not
+add sections the project never had.
 
-### API Documentation Must Have:
-- [ ] All endpoints listed
-- [ ] Request/response formats
-- [ ] Parameters and types
-- [ ] Example requests/responses
-- [ ] Error codes and meanings
-- [ ] Authentication requirements
-
-### User Guide Must Have:
-- [ ] Step-by-step tutorials
-- [ ] Common use cases
-- [ ] Troubleshooting section
-- [ ] FAQ
-- [ ] Examples with explanations
-
-### Code Comments Must Have:
-- [ ] Function/class purpose
-- [ ] Parameter descriptions
-- [ ] Return value descriptions
-- [ ] Usage examples (for complex functions)
-- [ ] Notes about edge cases
+- README: description, install, basic usage and configuration still match the code.
+- API docs (if the repo has them): endpoints, request/response formats, parameters, error codes and auth requirements match the code.
+- User guide (if the repo has one): tutorials, examples and troubleshooting still work.
+- Code comments: public functions state purpose, parameters, return value and edge cases.
 
 ---
 
@@ -130,31 +106,31 @@ success at the ceiling.
 ### When Safety Limit Is Reached:
 
 **DO:**
-- ✅ Stop immediately
-- ✅ Report what was documented
-- ✅ List what's still missing or unclear
-- ✅ Identify sections needing human input
+- Stop immediately
+- Report what was documented
+- List what's still missing or unclear
+- Identify sections needing human input
 
 **DO NOT:**
-- ❌ Claim docs are complete
-- ❌ Leave obvious gaps
-- ❌ Continue iteration
+- Claim docs are complete
+- Leave obvious gaps
+- Continue iteration
 
 ### Example Safety Failure Response:
 
 ```
-⚠️ Safety limit reached: 5 iterations completed, documentation incomplete.
+Safety limit reached: 5 iterations completed, documentation incomplete.
 
 Completed:
-- ✅ README.md: Updated with new API features
-- ✅ API docs: 8 new endpoints documented
-- ✅ Quick start guide: Added installation steps
-- ✅ Code examples: 12 working examples added
+- README.md: Updated with new API features
+- API docs: 8 new endpoints documented
+- Quick start guide: Added installation steps
+- Code examples: 12 working examples added
 
 Remaining:
-- ❌ Advanced configuration section (unclear what options exist)
-- ❌ Deployment guide (need environment-specific info)
-- ❌ Troubleshooting FAQ (need common issues from users)
+- Advanced configuration section (unclear what options exist)
+- Deployment guide (need environment-specific info)
+- Troubleshooting FAQ (need common issues from users)
 
 Issue:
 Some documentation requires domain knowledge or user input that I don't have.
@@ -227,29 +203,12 @@ find . -name "*.md" -exec markdown-link-check {} \;
 ## Success Criteria
 
 Goal is achieved when:
-1. ✅ All required documentation exists
-2. ✅ All code examples work
-3. ✅ No broken links
-4. ✅ No references to old/removed features
-5. ✅ Clear and readable
-6. ✅ Up-to-date with latest code
-
----
-
-## Integration with Post-Commit Hook
-
-From your existing hooks:
-```
-📋 DOC CHECK after git commit: Verify that README.md, docs/user-guide/USER-GUIDE.md,
-docs/user-guide/QUICK-START.md, and memory/MEMORY.md were updated and staged in this
-commit. If any are missing, update and amend or add a follow-up commit before pushing.
-```
-
-This skill can automate that check:
-```bash
-# After commit, if docs outdated:
-claude --prompt "/document --verify-commit"
-```
+1. All required documentation exists
+2. All code examples work
+3. No broken links
+4. No references to old/removed features
+5. Clear and readable
+6. Up-to-date with latest code
 
 ---
 
@@ -270,7 +229,7 @@ Claude automatically invokes document-with-goal:
    - Usage examples
    - Security notes
 5. Verifies links work
-6. Reports: "✅ README.md updated with complete auth documentation"
+6. Reports: "README.md updated with complete auth documentation"
 ```
 
 ### Example 2: Generate API Docs
@@ -287,12 +246,12 @@ Claude automatically invokes document-with-goal:
    - Response format
    - Example request/response
 3. Creates API.md file
-4. Reports: "✅ API documentation generated for 15 endpoints"
+4. Reports: "API documentation generated for 15 endpoints"
 ```
 
 ### Example 3: Verify After Code Change
 ```
-Post-commit hook: "Verify docs updated after commit"
+User: "Are the docs up to date after that commit?"
 
 Claude automatically invokes document-with-goal:
 
@@ -300,7 +259,7 @@ Claude automatically invokes document-with-goal:
 2. Identifies: new function added but not documented
 3. Uses /goal to update docs
 4. Adds function documentation
-5. Reports: "✅ Documentation updated for new validateEmail() function"
+5. Reports: "Documentation updated for new validateEmail() function"
 ```
 
 ---
@@ -308,10 +267,10 @@ Claude automatically invokes document-with-goal:
 ## When NOT to Use This Skill
 
 **Do NOT use** for:
-- ❌ Mid-development (too early)
-- ❌ Internal/private utilities (don't need public docs)
-- ❌ Experimental code (not stable yet)
-- ❌ Temporary code (will be removed)
+- Mid-development (too early)
+- Internal/private utilities (don't need public docs)
+- Experimental code (not stable yet)
+- Temporary code (will be removed)
 
 **Use manual documentation** when:
 - Documentation requires domain expertise
@@ -325,7 +284,6 @@ Claude automatically invokes document-with-goal:
 
 - Conservative iteration limit (5) - docs should be straightforward
 - May hit limit if human input needed
-- Integrates with existing post-commit hook
 - Focuses on completeness and accuracy
 - Works best for technical documentation
 - May need human input for conceptual/marketing docs

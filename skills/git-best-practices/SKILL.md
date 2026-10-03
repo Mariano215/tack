@@ -2,13 +2,9 @@
 name: git-best-practices
 description: >-
   Enforce git workflow conventions: commit message format (conventional commits),
-  branch naming (feature/, bugfix/, hotfix/), pre-commit checks (lint, tests, docs,
-  secrets scan), and pre-push validation (rebase, squash, full tests, CHANGELOG).
-trigger:
-  - "git commit"
-  - "create commit"
-  - "ready to push"
-  - "create branch"
+  branch naming (feature/, bugfix/, hotfix/), and pre-push validation (rebase,
+  squash WIP commits, the project's own lint, typecheck, test and build). Use when
+  committing, creating a branch, or getting ready to push.
 ---
 
 # Git Best Practices

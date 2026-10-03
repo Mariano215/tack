@@ -197,7 +197,7 @@ REPORT FORMAT:
 - list of untested paths
 ```
 
-Do NOT report stylistic issues. Only concrete bugs. Target 200-400 lines.
+Do NOT report stylistic issues. Only concrete bugs.
 
 Return markdown findings only — no preamble, no offer to fix. Do NOT run tests or build. Do NOT edit any file.
 ```

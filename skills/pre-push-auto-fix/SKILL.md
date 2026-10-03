@@ -17,11 +17,11 @@ This skill enhances pre-push checks with automatic fixing using `/goal`. Ensures
 
 ### Automatic Invocation by Claude:
 Claude should automatically use this skill when:
-- ✅ User says "ready to push" or "about to push"
-- ✅ User asks "can I push?" or "is it safe to push?"
-- ✅ User requests pre-push checks or quality gates
-- ✅ User says "check before push" or "validate before push"
-- ❌ Do NOT auto-invoke for: regular development, mid-feature work
+- User says "ready to push" or "about to push"
+- User asks "can I push?" or "is it safe to push?"
+- User requests pre-push checks or quality gates
+- User says "check before push" or "validate before push"
+- Do NOT auto-invoke for: regular development, mid-feature work
 
 **Examples triggering automatic use:**
 - "Is this ready to push?"
@@ -85,12 +85,12 @@ claim success at the ceiling.
 
 ### Phase 3: Report Results
 9. If all checks pass:
-   - ✅ Report: "All quality checks passed. Safe to push."
+   - Report: "All quality checks passed. Safe to push."
    - List what was checked
    - Show test coverage if available
 
 10. If checks fail after auto-fix attempts:
-    - ❌ Report: "Not safe to push. Manual fixes required."
+    - Report: "Not safe to push. Manual fixes required."
     - Show specific failures
     - Provide guidance on how to fix
 
@@ -101,40 +101,40 @@ claim success at the ceiling.
 ### When Safety Limit Is Reached (3 iterations):
 
 **DO:**
-- ✅ Stop immediately
-- ✅ Report which checks pass and which fail
-- ✅ Explain why auto-fix couldn't resolve issues
-- ✅ Recommend manual investigation
+- Stop immediately
+- Report which checks pass and which fail
+- Explain why auto-fix couldn't resolve issues
+- Recommend manual investigation
 
 **DO NOT:**
-- ❌ Continue trying to fix
-- ❌ Push despite failures
-- ❌ Claim checks passed if they didn't
+- Continue trying to fix
+- Push despite failures
+- Claim checks passed if they didn't
 
 ### Example Safety Failure Response:
 
 ```
-⚠️ Pre-push auto-fix limit reached: 3 iterations, quality checks still failing.
+Pre-push auto-fix limit reached: 3 iterations, quality checks still failing.
 
 Status:
-- ✅ Linting: passed (12 auto-fixed)
-- ✅ Formatting: passed
-- ✅ Type checking: passed
-- ❌ Tests: 2 failing
+- Linting: passed (12 auto-fixed)
+- Formatting: passed
+- Type checking: passed
+- Tests: 2 failing
   * test/auth.test.js:45 - "login should return token"
   * test/auth.test.js:67 - "logout should clear session"
-- ❌ Build: failed (TypeScript compilation error)
+- Build: failed (TypeScript compilation error)
 
 Issue:
 Tests are failing due to changes in auth.js that broke the token generation
 logic. This is not an auto-fixable issue - requires manual investigation.
 
-🛑 NOT SAFE TO PUSH
+NOT SAFE TO PUSH
 
 Next Steps:
 1. Investigate auth.js changes (likely lines 34-52)
 2. Run failing tests locally: npm test test/auth.test.js
-3. Use `/debug "auth tests failing"` for systematic debugging
+3. Use the systematic-debugging skill for a failing test
 4. Fix the issue manually
 5. Run `/pre-push` again before pushing
 ```
@@ -157,20 +157,20 @@ Stop at first non-auto-fixable failure in auto-fix mode.
 ## Auto-Fix Capabilities
 
 ### Can Auto-Fix:
-- ✅ Linting errors with `--fix` flag
-- ✅ Formatting with prettier/autopep8
-- ✅ Missing semicolons, trailing commas
-- ✅ Import sorting
-- ✅ Unused imports (safe removal)
-- ✅ Simple type annotations
+- Linting errors with `--fix` flag
+- Formatting with prettier/autopep8
+- Missing semicolons, trailing commas
+- Import sorting
+- Unused imports (safe removal)
+- Simple type annotations
 
 ### Cannot Auto-Fix (Fail Fast):
-- ❌ Logic errors
-- ❌ Test failures from broken code
-- ❌ Complex type errors
-- ❌ Build failures from syntax errors
-- ❌ Runtime errors
-- ❌ Broken business logic
+- Logic errors
+- Test failures from broken code
+- Complex type errors
+- Build failures from syntax errors
+- Runtime errors
+- Broken business logic
 
 ---
 
@@ -195,11 +195,11 @@ fi
 ## Success Criteria
 
 Goal is achieved when:
-1. ✅ All linters pass
-2. ✅ All formatters pass
-3. ✅ All type checks pass
-4. ✅ All tests pass
-5. ✅ Build succeeds (if applicable)
+1. All linters pass
+2. All formatters pass
+3. All type checks pass
+4. All tests pass
+5. Build succeeds (if applicable)
 
 ---
 
@@ -212,13 +212,13 @@ User: "Is this ready to push?"
 Claude automatically invokes pre-push-auto-fix:
 
 1. Runs all checks:
-   - Lint: ✅ passed
-   - Format: ✅ passed
-   - Types: ✅ passed
-   - Tests: ✅ all passing (23/23)
-   - Build: ✅ succeeded
+   - Lint: passed
+   - Format: passed
+   - Types: passed
+   - Tests: all passing (23/23)
+   - Build: succeeded
 
-2. Reports: "✅ All quality checks passed. Safe to push."
+2. Reports: "All quality checks passed. Safe to push."
 ```
 
 ### Example 2: Auto-Fixable Issues
@@ -228,8 +228,8 @@ User: "Can I push this?"
 Claude automatically invokes pre-push-auto-fix:
 
 1. Runs checks:
-   - Lint: ❌ 5 errors
-   - Format: ❌ 12 files need formatting
+   - Lint: 5 errors
+   - Format: 12 files need formatting
 
 2. Sets a /goal bounded to 3 turns
 
@@ -238,7 +238,7 @@ Claude automatically invokes pre-push-auto-fix:
    - Runs: npm run format
    - Re-checks: All pass now!
 
-4. Reports: "✅ Fixed 5 lint errors and formatted 12 files. Safe to push."
+4. Reports: "Fixed 5 lint errors and formatted 12 files. Safe to push."
 ```
 
 ### Example 3: Non-Fixable Issues
@@ -248,15 +248,15 @@ User: "Check before push"
 Claude automatically invokes pre-push-auto-fix:
 
 1. Runs checks:
-   - Lint: ✅ passed
-   - Tests: ❌ 3 failing
+   - Lint: passed
+   - Tests: 3 failing
 
 2. Attempts auto-fix (3 iterations)
    - Cannot auto-fix test failures
 
-3. Reports: "🛑 NOT SAFE TO PUSH. 3 tests failing. Manual fixes required."
+3. Reports: "NOT SAFE TO PUSH. 3 tests failing. Manual fixes required."
    - Provides specific failing tests
-   - Suggests using `/debug` to investigate
+   - Suggests the systematic-debugging skill to investigate
 ```
 
 ---
@@ -264,10 +264,10 @@ Claude automatically invokes pre-push-auto-fix:
 ## When NOT to Use This Skill
 
 **Do NOT use** for:
-- ❌ Mid-development (too early for push checks)
-- ❌ Experimental branches (quality gates too strict)
-- ❌ Draft PRs (not ready for strict checks)
-- ❌ WIP commits (work in progress)
+- Mid-development (too early for push checks)
+- Experimental branches (quality gates too strict)
+- Draft PRs (not ready for strict checks)
+- WIP commits (work in progress)
 
 **Use manual checks** when:
 - Intentionally pushing failing tests (with explanation)

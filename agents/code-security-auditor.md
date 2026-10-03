@@ -1,6 +1,6 @@
 ---
 name: code-security-auditor
-description: Security analysis and vulnerability detection for codebases. Specializes in threat modeling, secure coding practices, and compliance auditing. Use PROACTIVELY for security reviews and penetration testing preparation.
+description: Security analysis and vulnerability detection for codebases. Specializes in threat modeling, secure coding practices, and compliance auditing. Use for a wide-surface threat model or an auth review. Not for per-endpoint checks.
 model: opus
 tools: Read, Grep, Glob, Bash
 ---

@@ -4,13 +4,8 @@ description: >-
   Harden any endpoint that feeds untrusted text (user messages, tool results,
   fetched web content, bank/API data) into an LLM prompt. Zero-cost baseline
   layers plus guidance on when heavier ML/human-review layers earn their cost.
-trigger:
-  - "prompt injection"
-  - "chat endpoint"
-  - "llm prompt"
-  - "untrusted input to llm"
-  - "agent tool result"
-  - "system prompt leak"
+  Use for prompt injection, chat endpoints, LLM prompts built from untrusted input,
+  agent tool results, or system prompt leaks.
 ---
 
 # Prompt Injection Defense
