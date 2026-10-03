@@ -6,6 +6,8 @@ existing profile needs.
 
 ## Unreleased
 
+## 0.4.1 (2026-10-03)
+
 - Prompt audit of the skills, agents and output style: fixed conflicts, dead
   references, expired dates, `trigger:` frontmatter that never routed, emoji
   and em-dash report templates, and the update suppressor in the Plain style.
