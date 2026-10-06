@@ -197,33 +197,32 @@ if [ "$mode" = "compact" ]; then
 fi
 
 # ── Line 1: location / mode ─────────────────────────────────────────
-line1=""
-
-if [ -n "$session_name" ]; then
-  line1="[${session_name}]"
-fi
-
-if [ -n "$harness_profile" ]; then
-  [ -n "$line1" ] && line1="${line1} | ${harness_profile}" || line1="${harness_profile}"
-fi
-
-[ -n "$line1" ] && line1="${line1} | ${short_cwd}" || line1="${short_cwd}"
-
-if [ -n "$branch" ]; then
-  if [ -n "$git_worktree" ]; then
-    line1="${line1} | ${branch}(wt)"
-  else
-    line1="${line1} | ${branch}"
+# Capped at 110 characters. A long path is cut to its last two folders first,
+# then the whole row is cut with an ellipsis.
+build_line1() {
+  local l="" dir="$1"
+  [ -n "$session_name" ] && l="[${session_name}]"
+  if [ -n "$harness_profile" ]; then
+    [ -n "$l" ] && l="${l} | ${harness_profile}" || l="${harness_profile}"
   fi
-fi
+  [ -n "$l" ] && l="${l} | ${dir}" || l="${dir}"
+  if [ -n "$branch" ]; then
+    if [ -n "$git_worktree" ]; then l="${l} | ${branch}(wt)"; else l="${l} | ${branch}"; fi
+  fi
+  if [ -n "$output_style" ] && [ "$output_style" != "default" ]; then
+    l="${l} | style:${output_style}"
+  fi
+  [ -n "$vim_mode" ] && l="${l} | ${vim_mode}"
+  printf '%s' "$l"
+}
 
-if [ -n "$output_style" ] && [ "$output_style" != "default" ]; then
-  line1="${line1} | style:${output_style}"
+row_max=110
+line1=$(build_line1 "$short_cwd")
+if [ "${#line1}" -gt "$row_max" ]; then
+  tail2="${short_cwd%/*}"; tail2="${short_cwd#"${tail2%/*}"/}"
+  line1=$(build_line1 "…/${tail2}")
 fi
-
-if [ -n "$vim_mode" ]; then
-  line1="${line1} | ${vim_mode}"
-fi
+[ "${#line1}" -gt "$row_max" ] && line1="${line1:0:$(( row_max - 1 ))}…"
 
 # ── Line 2: model / effort / context bar + usage limits ─────────────
 line2="${model}"

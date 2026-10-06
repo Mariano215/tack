@@ -38,6 +38,13 @@ check full-lines "$out" "Opus 5.5"
 widest=$(printf '%s\n' "$out" | tail -n 2 | awk '{ if (length($0) > m) m = length($0) } END { print m }')
 [ "$widest" -le 80 ] || { echo "FAIL full-width: rows 2 and 3 are $widest wide, want 80 or less"; fail=1; }
 
+# row 1 stays within 110 characters, long path or not
+long="/very/long/project/path/$(printf 'x%.0s' $(seq 1 60))/deep/leaf"
+out="$(printf '{"model":{"display_name":"Opus 5.5"},"workspace":{"current_dir":"%s"},"session_name":"a-long-session-name"}' "$long" | run)"
+row1="$(printf '%s\n' "$out" | head -n 1)"
+[ "${#row1}" -le 110 ] || { echo "FAIL row1-cap: ${#row1} chars"; fail=1; }
+check row1-tail "$row1" "deep/leaf"
+
 # sparkline needs two samples, and a repeat value adds none
 out="$(json s1 30 "$warm" | run)"
 absent spark-repeat "$out" "▁"
