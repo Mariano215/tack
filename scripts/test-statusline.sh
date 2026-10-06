@@ -6,7 +6,7 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 export HOME="$tmp/home" CLAUDE_CONFIG_DIR="$tmp/cfg" NO_COLOR=1
-mkdir -p "$HOME" "$CLAUDE_CONFIG_DIR"
+mkdir -p "$HOME/.claude" "$CLAUDE_CONFIG_DIR"
 unset TACK_STATUSLINE COLUMNS
 
 fail=0
@@ -34,6 +34,9 @@ check full-5h "$out" "5h:23%"
 check full-cache "$out" "cache 91% 24m"
 check full-cost "$out" "\$1.23 47m"
 check full-lines "$out" "Opus 5.5"
+[ "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" = "3" ] || { echo "FAIL full-rows: want 3 rows in [$out]"; fail=1; }
+widest=$(printf '%s\n' "$out" | tail -n 2 | awk '{ if (length($0) > m) m = length($0) } END { print m }')
+[ "$widest" -le 80 ] || { echo "FAIL full-width: rows 2 and 3 are $widest wide, want 80 or less"; fail=1; }
 
 # sparkline needs two samples, and a repeat value adds none
 out="$(json s1 30 "$warm" | run)"

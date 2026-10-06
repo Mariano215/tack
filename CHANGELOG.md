@@ -6,6 +6,11 @@ existing profile needs.
 
 ## Unreleased
 
+- Status line: the full layout is now three rows (location, model and
+  context, limits and cache and cost) so each row fits an 80 column terminal.
+  The third row is dropped when it has nothing to show. The compact layout is
+  unchanged.
+
 ## 0.4.1 (2026-10-03)
 
 - Prompt audit of the skills, agents and output style: fixed conflicts, dead

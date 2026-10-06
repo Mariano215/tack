@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Status line. Reads Claude Code's session JSON on stdin, prints one or two lines.
+# Status line. Reads Claude Code's session JSON on stdin, prints up to three rows
+# (location, model and context, limits and cost) or one compact line.
 # Layout: full (default) or compact. Compact when TACK_STATUSLINE=compact, when
 # ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.statusline-mode says "compact", or when
 # COLUMNS is set and under 100. TACK_STATUSLINE=full beats the COLUMNS fallback.
@@ -237,26 +238,36 @@ if [ -n "$used_int" ]; then
   line2="${line2} | ${bar}${spark:+ $spark} ${PCT_TXT}"
 fi
 
+# ── Line 3: usage limits / cache / cost ─────────────────────────────
+# Segments are joined by add3 so a missing one leaves no stray separator.
+line3=""
+add3() { [ -n "$line3" ] && line3="${line3} | $1" || line3="$1"; }
+
 if [ -n "$five_h" ]; then
   pct_txt "5h:" "$five_h"
-  line2="${line2} | ${PCT_TXT}"
+  seg="${PCT_TXT}"
   if [ -n "$five_h_reset" ]; then
     t="$(fmt_epoch "$five_h_reset" "%H:%M")"
-    [ -n "$t" ] && line2="${line2}(resets ${t})"
+    [ -n "$t" ] && seg="${seg}(resets ${t})"
   fi
+  add3 "$seg"
 fi
 
 if [ -n "$seven_d" ]; then
   pct_txt "7d:" "$seven_d"
-  line2="${line2} | ${PCT_TXT}"
+  seg="${PCT_TXT}"
   if [ -n "$seven_d_reset" ]; then
     t="$(fmt_epoch "$seven_d_reset" "%a %H:%M")"
-    [ -n "$t" ] && line2="${line2}(resets ${t})"
+    [ -n "$t" ] && seg="${seg}(resets ${t})"
   fi
+  add3 "$seg"
 fi
 
-[ -n "$cache_seg" ] && line2="${line2} | ${cache_seg}"
-[ -n "$cost_seg" ] && line2="${line2} | ${cost_seg}"
+[ -n "$cache_seg" ] && add3 "$cache_seg"
+[ -n "$cost_seg" ] && add3 "$cost_seg"
 
 # ── Output ──────────────────────────────────────────────────────────
+# Three rows. The third is dropped when there is nothing to show on it.
 printf "%s\n%s" "$line1" "$line2"
+[ -n "$line3" ] && printf "\n%s" "$line3"
+exit 0
