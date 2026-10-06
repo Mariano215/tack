@@ -35,6 +35,7 @@ exec bash ./core/lib/apply-profile.sh ./manifest.json
 SH
     chmod +x install.sh
     [ -f skills/.gitkeep ] || { mkdir -p skills; : > skills/.gitkeep; }
+    [ -d "$pdir/skills" ] && cp -R "$pdir/skills/." skills/
     cat > README.md <<MD
 # tack-$name
 

@@ -11,9 +11,12 @@
     "claude": {
       "plugins": {
         "ui-ux-pro-max@ui-ux-pro-max-skill": true,
-        "frontend-slides@frontend-slides": true
+        "frontend-slides@frontend-slides": true,
+        "animate@animate": true
       },
-      "env": {}
+      "env": {
+        "CHATTERBOX_API": "tts"
+      }
     },
     "codex": {}
   },
