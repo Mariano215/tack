@@ -1,0 +1,9 @@
+{
+  "name": "agent-dock",
+  "version": "0.1.0",
+  "description": "/dock N sets the helper team for the next prompt and shows every agent as a card.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Mariano215"
+  }
+}

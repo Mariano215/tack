@@ -219,6 +219,35 @@ while IFS=: read -r f ln rest; do
     "Rewrite it. 'You MUST use X'/'if in doubt, use X' over-trigger the tool on current models, so say 'Use X when ...' and give the reason. 'double-check'/'re-verify' duplicates self-checking the model already does. 'only report high-severity' is obeyed literally and hides real findings, so ask for everything and filter in a second pass. If the line is a quoted example or a label rather than an instruction, append a 'prompt-ok' comment."
 done < <(grep -rniE "you must use|if in doubt, *use|double[ -]check (your|the) (work|answer|output)|re-verify before|think step by step|only report (high|critical)[- ]severity" $PROMPT_FILES 2>/dev/null)
 
+# 7e. Mods. Each machine installs a new copy of a mod only through the daily
+#     `claude plugin update`, and that skips a version it already has, so a
+#     mod whose files changed while its plugin.json version did not never
+#     leaves this repo. The guard needs only git and jq. Validate and test
+#     need the claude CLI, which CI does not have, so they skip without it.
+MODS_BASE="${MODS_BASE:-origin/main}"
+for dir in mods/*/; do
+  [ -d "$dir" ] || continue
+  dir="${dir%/}"
+  if command -v claude >/dev/null 2>&1; then
+    claude plugin validate "$dir" >/dev/null 2>&1 \
+      || err "$dir does not validate." "Run: claude plugin validate $dir"
+    if ls "$dir"/hooks/*.test.ts >/dev/null 2>&1; then
+      claude plugin test "$dir" >/dev/null 2>&1 \
+        || err "$dir tests fail." "Run: claude plugin test $dir"
+    fi
+  fi
+  git rev-parse -q --verify "$MODS_BASE" >/dev/null || continue
+  git diff --quiet "$MODS_BASE" -- "$dir" && continue
+  old="$(git show "$MODS_BASE:$dir/.claude-plugin/plugin.json" 2>/dev/null | jq -r '.version // ""' | tr -d '\r')"
+  new="$(jq -r '.version // ""' "$dir/.claude-plugin/plugin.json" 2>/dev/null | tr -d '\r')"
+  [ -n "$old" ] && [ "$old" = "$new" ] && err "$dir changed since $MODS_BASE but its version is still $new." \
+    "Raise \"version\" in $dir/.claude-plugin/plugin.json. Without it no machine installs the change."
+done
+if command -v claude >/dev/null 2>&1 && [ -f .claude-plugin/marketplace.json ]; then
+  claude plugin validate . >/dev/null 2>&1 \
+    || err ".claude-plugin/marketplace.json does not validate." "Run: claude plugin validate ."
+fi
+
 # 7. shellcheck when present. Optional locally so nobody is blocked by a stale
 #    brew; the CI runner always has it.
 if command -v shellcheck >/dev/null 2>&1; then

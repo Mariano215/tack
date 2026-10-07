@@ -6,6 +6,11 @@ existing profile needs.
 
 ## Unreleased
 
+- Mods: `mods/` ships `agent-graph` (live subagent tree above the prompt)
+  and `agent-dock` (`/dock N` picks the helper team), served by this repo as
+  the `tack-mods` marketplace. Both are off; turn one on in a profile
+  manifest. `scripts/check.sh` validates and tests each mod when the claude
+  CLI is present, and refuses a changed mod whose version did not go up.
 - Status line: the full layout is now three rows (location, model and
   context, limits and cache and cost) so each row fits an 80 column terminal.
   The third row is dropped when it has nothing to show. The compact layout is

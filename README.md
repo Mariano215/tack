@@ -384,6 +384,12 @@ stays off: its SessionStart bootstrap tells the model to invoke a skill on
 upstream release, run `scripts/vendor-superpowers.sh <plugin dir>`;
 `skills/SUPERPOWERS.md` lists the local patches.
 
+Two mods ship in `mods/`, served by this repo as the `tack-mods`
+marketplace: `agent-graph` draws a live tree of subagents above the prompt,
+and `agent-dock` adds `/dock N` to pick the helper team for the next prompt.
+Both are off. Turn one on with `"agent-graph@tack-mods": true` under
+`plugins` in a profile manifest.
+
 Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing

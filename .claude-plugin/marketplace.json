@@ -1,0 +1,19 @@
+{
+  "name": "tack-mods",
+  "owner": {
+    "name": "tack"
+  },
+  "description": "Claude Code mods that ship with tack.",
+  "plugins": [
+    {
+      "name": "agent-graph",
+      "source": "./mods/agent-graph",
+      "description": "Live tree of subagents above the prompt: who spawned whom, model, effort, progress. Fades out when all finish."
+    },
+    {
+      "name": "agent-dock",
+      "source": "./mods/agent-dock",
+      "description": "/dock N sets the helper team for the next prompt and shows every agent as a card."
+    }
+  ]
+}

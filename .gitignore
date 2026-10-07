@@ -2,3 +2,5 @@
 .claude/settings.local.json
 .env
 __pycache__/
+mods/*/.claude-plugin/types/
+mods/*/node_modules/

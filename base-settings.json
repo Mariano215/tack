@@ -159,7 +159,9 @@
     "claude-md-management@claude-plugins-official": false,
     "ui-ux-pro-max@ui-ux-pro-max-skill": false,
     "agent-skills@addy-agent-skills": false,
-    "frontend-slides@frontend-slides": false
+    "frontend-slides@frontend-slides": false,
+    "agent-graph@tack-mods": false,
+    "agent-dock@tack-mods": false
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -214,6 +216,12 @@
       "source": {
         "source": "github",
         "repo": "nateherkai/scroll-craft"
+      }
+    },
+    "tack-mods": {
+      "source": {
+        "source": "github",
+        "repo": "Mariano215/tack"
       }
     }
   },

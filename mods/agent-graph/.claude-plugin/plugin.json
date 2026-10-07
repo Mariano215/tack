@@ -1,0 +1,9 @@
+{
+  "name": "agent-graph",
+  "version": "0.1.0",
+  "description": "Live tree of subagents above the prompt: who spawned whom, status and progress. Fades out when all finish.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Mariano215"
+  }
+}
