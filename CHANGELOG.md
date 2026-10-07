@@ -4,7 +4,7 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
-## Unreleased
+## 0.5.0 (2026-10-07)
 
 - Mods: `mods/` ships `agent-graph` (live subagent tree above the prompt)
   and `agent-dock` (`/dock N` picks the helper team), served by this repo as

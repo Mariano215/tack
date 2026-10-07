@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.4.1-3B7A57"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.5.0-3B7A57"></a>
 </p>
 
 <p align="center">
