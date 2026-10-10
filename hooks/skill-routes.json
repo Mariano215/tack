@@ -73,6 +73,12 @@
       "pattern": "\\b(ingest(ion)? pipeline|document ingestion|embed(ding)? documents?|vector store|rag pipeline|knowledge base upload)\\b",
       "skill": "ingest-scrubbing",
       "hint": "Scrub at ingest AND re-check at retrieval \u2014 poisoned corpus entries fire on someone else's unrelated query later. Reuses prompt-injection-defense's baseline on retrieved chunks."
+    },
+    {
+      "id": "read-document",
+      "pattern": "^(?!.*(\\b(write|build|make|generate|create|render|export|save|produce|draft|convert|turn|format|brand)\\b.{0,60}\\b(to|into|as)\\s+\\S*\\.(docx|xlsx|pptx|pdf)\\b|\\b(write|build|make|generate|create|render|export|save|produce|draft|convert|turn|format|brand)\\s+(a |an |the |our |my )?\\S*\\.(docx|xlsx|pptx)\\b|\\.(docx|xlsx|pptx)\\b.{0,30}\\b(needs to be|should be|to be) (written|built|created|generated|drafted))).*(\\.(docx?|xlsx?|xlsm|pptx?|odt|ods|odp|rtf|epub)\\b|\\b(read|review|summari[sz]e|open|extract|parse|go through|look at)\\b.{0,40}\\b(word (doc|document|file)s?|spreadsheets?|excel (file|sheet|workbook)s?|powerpoint|slide decks?)\\b)",
+      "skill": "read-document",
+      "hint": "Convert the file with docmd, then Read the .md it writes. Local only: never use anydoc hosted OCR on client files."
     }
   ]
 }
