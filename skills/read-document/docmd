@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""docmd - convert an Office document or text PDF to Markdown, on this machine.
+
+A thin wrapper over anydoc (github.com/firecrawl/anydoc). It adds three things:
+the install fix when anydoc is missing, a file on disk instead of stdout (a
+large spreadsheet overflows a Bash tool result), and a hard local-only rule.
+anydoc can send a scanned PDF to Firecrawl's hosted OCR. This never asks it to,
+because the files it reads are often client documents.
+
+usage: docmd <file>... [-o dir]
+Prints one line per file: the Markdown path and its size.
+"""
+import hashlib
+import os
+import sys
+import tempfile
+
+# The interpreter running this script, so the package lands where it imports.
+INSTALL = '"%s" -m pip install --user firecrawl-anydoc' % sys.executable
+
+
+def out_path(src, outdir):
+    # Two policy.docx files from two evidence folders must not overwrite each
+    # other, so the name carries a short hash of the full source path.
+    tag = hashlib.sha1(os.path.abspath(src).encode("utf8")).hexdigest()[:8]
+    stem = os.path.splitext(os.path.basename(src))[0]
+    return os.path.join(outdir, "%s.%s.md" % (stem, tag))
+
+
+def main(argv):
+    outdir = os.path.join(tempfile.gettempdir(), "docmd")
+    if "-o" in argv:
+        i = argv.index("-o")
+        if i + 1 >= len(argv):
+            sys.exit("usage: docmd <file>... [-o dir]")
+        outdir = argv[i + 1]
+        del argv[i:i + 2]
+    if not argv:
+        sys.exit("usage: docmd <file>... [-o dir]")
+    try:
+        import anydoc
+    except ImportError:
+        sys.exit("anydoc is not installed. Install it with:\n  %s" % INSTALL)
+
+    os.makedirs(outdir, exist_ok=True)
+    failed = 0
+    for src in argv:
+        try:
+            # ocr="reject" is anydoc's default today. Pinned here so a changed
+            # default upstream can never start uploading client files.
+            text = anydoc.to_markdown(src, ocr="reject")
+        except anydoc.NeedsOcrError as e:
+            print("%s: scanned pages %s of %s need OCR. Read the PDF with the Read tool "
+                  "instead (it sees page images). Do not use hosted OCR." %
+                  (src, e.pages, e.page_count), file=sys.stderr)
+            failed = 1
+            continue
+        except anydoc.EncryptedError:
+            print("%s: encrypted or password protected. Ask the user for an "
+                  "unprotected copy." % src, file=sys.stderr)
+            failed = 1
+            continue
+        except (anydoc.ConvertError, OSError) as e:
+            print("%s: %s: %s" % (src, type(e).__name__, e), file=sys.stderr)
+            failed = 1
+            continue
+        dest = os.path.normpath(out_path(src, outdir))
+        with open(dest, "w", encoding="utf8", newline="\n") as fh:
+            fh.write(text)
+        print("%s  (%d chars, %d lines)" % (dest, len(text), text.count("\n")))
+    return failed
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

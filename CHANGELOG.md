@@ -4,6 +4,14 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## Unreleased
+
+- New skill `read-document`: `docmd` converts Word, Excel, PowerPoint,
+  OpenDocument, RTF, EPUB and long text PDFs to Markdown on the machine with
+  anydoc (`pip install --user firecrawl-anydoc`), so the agent can read files
+  the Read tool cannot open. It never uses anydoc's hosted OCR. A skill-router
+  route sends a prompt that names one of these files to the skill.
+
 ## 0.5.0 (2026-10-07)
 
 - Mods: `mods/` ships `agent-graph` (live subagent tree above the prompt)

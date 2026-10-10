@@ -47,6 +47,17 @@ what can we delete from this module|ponytail-review
 audit codebase for dead weight|ponytail-audit
 harden the chat endpoint against prompt injection|prompt-injection-defense
 scrub documents in the rag pipeline|ingest-scrubbing
+what does evidence/Access Policy.docx say about MFA|read-document
+pull the control owners out of Controls.xlsx|read-document
+summarize the client's word document on retention|read-document
+write a summary of Controls.xlsx|read-document
+# Writing a document is not reading one.
+write the findings to Report.docx|
+draft the proposal as Proposal.docx|
+convert findings.md to Report.docx|
+turn the notes into Report.docx|
+Report.docx needs to be written|
+build the deliverable as Findings.docx with the house brand|
 # Order sensitivity: tdd sits above bugfix, so it must win a prompt both match.
 add test coverage for the crash|tdd
 # Negatives: these must route nowhere.
