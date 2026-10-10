@@ -4,7 +4,7 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
-## Unreleased
+## 0.5.1 (2026-10-10)
 
 - New skill `read-document`: `docmd` converts Word, Excel, PowerPoint,
   OpenDocument, RTF, EPUB and long text PDFs to Markdown on the machine with
