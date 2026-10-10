@@ -1,20 +1,24 @@
 ---
 name: read-document
-description: Read the text of a Word, Excel, PowerPoint, OpenDocument, RTF, EPUB or long PDF file by converting it to Markdown on this machine with anydoc. Use whenever you need the contents of a .docx, .doc, .xlsx, .xls, .xlsm, .pptx, .ppt, .odt, .ods, .odp, .rtf or .epub file (the Read tool cannot open these), or a text PDF longer than about 10 pages. Typical cases are client evidence in an audit, an RFP or SOW for a proposal, a requirements document, or a spreadsheet of controls. Nothing leaves the machine.
+description: Read the text of a Word, Excel, PowerPoint, OpenDocument, RTF, EPUB or long PDF file by converting it to Markdown on this machine with anydoc. Use whenever you need the contents of a .docx, .doc, .xlsx, .xls, .xlsm, .pptx, .ppt, .odt, .ods, .odp, .rtf or .epub file (a plain file read cannot open these), or a text PDF longer than about 10 pages. Typical cases are client evidence in an audit, an RFP or SOW for a proposal, a requirements document, or a spreadsheet of controls. Nothing leaves the machine.
 ---
 
 # Read a document
 
-The Read tool opens text files, images and PDFs. It cannot open Office files.
+Office files are zip or binary containers, so a plain file read returns noise.
 `docmd` converts them to Markdown with anydoc, writes the result to a file, and
-prints its path. Then you read that file with the Read tool.
+prints its path. Then you read that file like any other text file.
+
+`docmd` sits in this skill's directory: in Claude Code
+`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/read-document`, in Codex
+`${CODEX_HOME:-$HOME/.codex}/skills/read-document`.
 
 ```bash
-DOCMD="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/read-document/docmd"   # Git Bash, macOS, Linux
+DOCMD="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/read-document/docmd"   # Codex: ${CODEX_HOME:-$HOME/.codex}/skills/...
 "$DOCMD" "evidence/Access Policy.docx" "evidence/Controls.xlsx"
 ```
 ```powershell
-& "$HOME\.claude\skills\read-document\docmd.cmd" "evidence\Access Policy.docx"
+& "$HOME\.claude\skills\read-document\docmd.cmd" "evidence\Access Policy.docx"   # Codex: $HOME\.codex\skills\...
 ```
 
 Output, one line per file:
@@ -23,19 +27,19 @@ Output, one line per file:
 /tmp/docmd/Access Policy.3f9a1c2e.md  (18240 chars, 412 lines)
 ```
 
-Read the `.md` with the Read tool. For a large one, read it in parts with
-`offset` and `limit`, or grep it, rather than all at once. Pass `-o <dir>` to
+Read the `.md` file. For a large one, read it in parts (a line range) or grep
+it, rather than all at once. Pass `-o <dir>` to
 write somewhere other than the temp dir.
 
 ## When to use it, and when not
 
 | File | Use |
 |---|---|
-| `.docx .doc .xlsx .xls .xlsm .pptx .ppt .odt .ods .odp .rtf .epub` | `docmd`. Read cannot open these. |
-| Text PDF, about 10 pages or fewer | Read tool. It is direct and keeps the layout. |
+| `.docx .doc .xlsx .xls .xlsm .pptx .ppt .odt .ods .odp .rtf .epub` | `docmd`. A plain read cannot open these. |
+| Text PDF, about 10 pages or fewer | Your agent's PDF reader if it has one (Claude Code's Read does). Otherwise `docmd`. |
 | Text PDF, longer | `docmd`. One conversion is cheaper than many page images, and you can grep it. |
-| Scanned PDF | Read tool. `docmd` says `need OCR` and stops. |
-| `.csv .md .txt .json` | Read tool. They are already text. |
+| Scanned PDF | A PDF reader that sees page images (Claude Code's Read). `docmd` says `need OCR` and stops. With no such reader, tell the user the file needs OCR. |
+| `.csv .md .txt .json` | Read them directly. They are already text. |
 
 ## Rules
 

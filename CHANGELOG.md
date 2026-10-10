@@ -4,6 +4,11 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## Unreleased
+
+- Codex installs `read-document` too. Its SKILL.md no longer assumes
+  Claude Code's Read tool or config path.
+
 ## 0.5.1 (2026-10-10)
 
 - New skill `read-document`: `docmd` converts Word, Excel, PowerPoint,
