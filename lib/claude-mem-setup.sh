@@ -16,6 +16,8 @@ CLAUDE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 MEM_DIR="${CLAUDE_MEM_DATA_DIR:-$HOME/.claude-mem}"
 MEM_SETTINGS="$MEM_DIR/settings.json"
 FALLBACK_MODEL="${HARNESS_MEM_FALLBACK_MODEL:-claude-haiku-4-5-20251001}"
+# A worker the npx calls below start does not see the base-settings env.
+export CLAUDE_MEM_TELEMETRY=false CLAUDE_MEM_TELEMETRY_ERRORS=false
 
 # Tests and offline bootstrap validation need profile composition without an
 # npm fetch or a worker repair. This skips only claude-mem setup; settings still
@@ -81,11 +83,9 @@ fi
 
 # Provider keys are harness-owned so every machine summarizes the same way.
 # Everything else in this file stays machine-local (ports, data dir, display).
-# Telemetry is off: 13.41 added opt-out PostHog rollups.
 tmp="$MEM_SETTINGS.harness.$$"
 jq --arg p "$provider" --arg m "$model" --arg u "$OLLAMA_URL" '
   .CLAUDE_MEM_PROVIDER = $p
-  | .CLAUDE_MEM_TELEMETRY = "false"
   | if $p == "openrouter" then
       .CLAUDE_MEM_OPENROUTER_BASE_URL = $u
       | .CLAUDE_MEM_OPENROUTER_MODEL = $m
