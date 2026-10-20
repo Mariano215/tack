@@ -81,9 +81,11 @@ fi
 
 # Provider keys are harness-owned so every machine summarizes the same way.
 # Everything else in this file stays machine-local (ports, data dir, display).
+# Telemetry is off: 13.41 added opt-out PostHog rollups.
 tmp="$MEM_SETTINGS.harness.$$"
 jq --arg p "$provider" --arg m "$model" --arg u "$OLLAMA_URL" '
   .CLAUDE_MEM_PROVIDER = $p
+  | .CLAUDE_MEM_TELEMETRY = "false"
   | if $p == "openrouter" then
       .CLAUDE_MEM_OPENROUTER_BASE_URL = $u
       | .CLAUDE_MEM_OPENROUTER_MODEL = $m

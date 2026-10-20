@@ -8,6 +8,8 @@ existing profile needs.
 
 - Codex installs `read-document` too. Its SKILL.md no longer assumes
   Claude Code's Read tool or config path.
+- claude-mem setup turns its telemetry off (`CLAUDE_MEM_TELEMETRY=false`).
+  claude-mem 13.41 added PostHog rollups that are on unless you opt out.
 
 ## 0.5.1 (2026-10-10)
 
