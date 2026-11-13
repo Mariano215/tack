@@ -28,8 +28,12 @@ from pathlib import Path
 # Paths an unattended job may edit. No code (hooks, scripts, bin, lib) and no
 # settings: base-settings.json owns plugins and marketplaces, and a bad hook
 # reaches every machine through tack sync.
-ALLOWED_PREFIXES = ("skills/", "agents/", "commands/", "templates/CLAUDE.md",
-                    "templates/AGENTS.md", "output-styles/", "hooks/skill-routes.json")
+# Markdown only under these dirs: a skill can ship scripts, and check.sh runs
+# tests that execute them, so a model-written .sh would run unattended.
+ALLOWED_MD_DIRS = ("skills/", "agents/", "commands/", "output-styles/")
+ALLOWED_FILES = ("templates/CLAUDE.md", "templates/AGENTS.md", "hooks/skill-routes.json")
+ALLOWED_PREFIXES = ALLOWED_MD_DIRS + ALLOWED_FILES  # for messages
+TRUSTED_COMMENTERS = ("OWNER", "MEMBER", "COLLABORATOR")
 MIN_SESSIONS = 2   # harness2: a single-run defect is noise, a repeat is real
 LEDGER_CAP = 50    # harness2 has no cap and no dedup; we keep the newest per cue
 REFLECT_AFTER_DAYS = 7
@@ -37,7 +41,8 @@ ROUTE_RE = re.compile(r'Invoke the Skill tool with skill \\?"([\w:.-]+)')
 CORRECTION_RE = re.compile(r"^\s*(no\b|nope|don'?t|do not|stop|wrong|that'?s not|not what|undo|revert)", re.I)
 REJECT_PREFIX = "The user doesn't want to proceed"
 # Telegram bot token, GitHub, Anthropic/OpenAI, AWS key shapes. An edit lands in a pushed PR.
-TOKEN_RE = re.compile(r"\d{6,}:[A-Za-z0-9_-]{30,}|gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}")
+TOKEN_RE = re.compile(r"\d{6,}:[A-Za-z0-9_-]{30,}|gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}"
+                      r"|BEGIN [A-Z ]*PRIVATE KEY|xox[abpr]-[A-Za-z0-9-]{10,}")
 
 
 def _text(content):
@@ -164,8 +169,10 @@ def gate(proposal_path, signals_path, ledger_path, out_path):
     for e in edits or []:
         why = _reject_reason(e, known, refused)
         (dropped if why else kept).append({**e, "drop_reason": why} if why else e)
-    res = {"verdict": "EDITS" if kept else "KEEP_BASE", "edits": kept, "dropped": dropped,
-           "notes": str(prop.get("notes", "")) if isinstance(prop, dict) else ""}
+    notes = str(prop.get("notes", "")) if isinstance(prop, dict) else ""
+    if TOKEN_RE.search(notes):
+        notes = "(notes withheld: they contained a token-like string)"
+    res = {"verdict": "EDITS" if kept else "KEEP_BASE", "edits": kept, "dropped": dropped, "notes": notes}
     Path(out_path).write_text(json.dumps(res, indent=1), encoding="utf-8")
     print(f"gate: kept {len(kept)}, dropped {len(dropped)}")
 
@@ -176,15 +183,15 @@ def _reject_reason(e, known, refused):
     path = str(e.get("path", ""))
     if not path or path.startswith("/") or ".." in Path(path).parts:
         return "bad path"
-    if not path.startswith(ALLOWED_PREFIXES):
-        return f"path outside {', '.join(ALLOWED_PREFIXES)}"
+    if not (path in ALLOWED_FILES or (path.startswith(ALLOWED_MD_DIRS) and path.endswith(".md"))):
+        return f"path outside {', '.join(ALLOWED_PREFIXES)} (.md only under dirs)"
     if e.get("action") not in ("replace", "create"):
         return "action must be replace or create"
     if not str(e.get("cue", "")).strip():
         return "no cue"
     if not str(e.get("why", "")).strip():
         return "no why (the ledger needs it as the lesson)"
-    if TOKEN_RE.search(" ".join(str(e.get(k, "")) for k in ("new", "why", "cue"))):
+    if TOKEN_RE.search(json.dumps(e)):
         return "contains a token-like string"
     if str(e.get("cue", "")).strip().lower() in refused:
         return "cue was rejected or hurt before (ledger)"
@@ -256,7 +263,10 @@ def reflect(state_dir, summary_path, prs_path):
             continue
         rows = []
         if pr.get("state") == "CLOSED":
-            note = _snip(str(((pr.get("comments") or [{}])[-1] or {}).get("body", ""))) or "no comment"
+            # Only a comment from someone with write access is a reason; anyone can comment on a public repo.
+            trusted = [c for c in (pr.get("comments") or []) if isinstance(c, dict)
+                       and c.get("authorAssociation") in TRUSTED_COMMENTERS]
+            note = (_snip(str(trusted[-1].get("body", ""))) if trusted else "") or "no comment"
             rows = [{"cue": e.get("cue"), "lesson": e.get("why"), "verdict": "rejected",
                      "evidence": f"PR #{pr['number']} closed: {note}"} for e in run.get("edits", [])]
         elif pr.get("state") == "MERGED":

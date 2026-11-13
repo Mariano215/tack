@@ -344,15 +344,16 @@ counts signals: tool errors, hook blocks, rejected tool calls, user corrections,
 compactions, and skills the router asked for but no session loaded. Two
 proposers draft edits from that evidence. INV covers how the agent works, and
 DOM covers what it knows. A gate then drops any edit that has no citation, that
-is cited in only one session, or that touches a path outside `skills/`,
-`agents/`, `commands/`, `output-styles/`, `templates/CLAUDE.md`,
-`templates/AGENTS.md` and `hooks/skill-routes.json`. A composer merges the rest
+is cited in only one session, or that touches anything other than `.md`
+files under `skills/`, `agents/`, `commands/` and `output-styles/`, or
+`templates/CLAUDE.md`, `templates/AGENTS.md` and `hooks/skill-routes.json`. A composer merges the rest
 or keeps the base. If `scripts/check.sh` passes, the job opens a **draft PR**
 labeled `tack-tune`. It never pushes `main`, so `tack sync` spreads nothing until you
 merge.
 
 The next run reads what you did with each earlier tune PR. A closed PR becomes a
-`rejected` row in the ledger (`harness-tune/ledger.jsonl` in the config dir). The
+`rejected` row, with the reason taken only from a comment by someone with
+write access, in the ledger (`harness-tune/ledger.jsonl` in the config dir). The
 job does not propose that cue again. When a PR has been merged for 7 days, the
 job compares the signal rate before and after the merge and records the edit as
 `helped`, `hurt`, `no_effect` or `confounded`. Transcripts never enter the repo.

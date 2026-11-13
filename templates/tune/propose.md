@@ -27,8 +27,9 @@ Rules:
 - Write in plain American English. No em-dashes or en-dashes.
 - Making no edit is a valid answer. Return KEEP_BASE when the evidence is thin.
 
-Allowed paths: skills/, agents/, commands/, output-styles/, templates/CLAUDE.md,
-templates/AGENTS.md, hooks/skill-routes.json. Anything else is dropped.
+Allowed paths: .md files under skills/, agents/, commands/ and output-styles/,
+plus templates/CLAUDE.md, templates/AGENTS.md and hooks/skill-routes.json.
+Anything else, including any script, is dropped.
 
 Answer with one fenced json block and nothing after it:
 

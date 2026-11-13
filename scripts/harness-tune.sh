@@ -144,7 +144,10 @@ ask() {  # role file, output file; extra stdin sections appended by the caller
     echo "<ledger>"; cat "$STATE/ledger.jsonl" 2>/dev/null; echo "</ledger>"
     cat
   } > "$RUN/$2.prompt"
+  # Deny the usual secret stores. shortcut: not a full worktree jail, verify Read scope on the first real run.
   (cd "$WT" && "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools Read,Grep,Glob \
+      --disallowedTools "Read(~/.config/**)" "Read(~/.ssh/**)" "Read(~/.aws/**)" "Read(~/.gnupg/**)" \
+        "Read(**/.env)" "Read(**/.env.*)" "Grep(~/.config/**)" "Grep(~/.ssh/**)" \
       --no-session-persistence --output-format text < "$RUN/$2.prompt") > "$RUN/$2.out" 2>>"$LOG"
 }
 HARNESS_MANIFEST="$WT/profiles/$profile/manifest.json"
