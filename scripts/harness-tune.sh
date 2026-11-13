@@ -155,7 +155,12 @@ ask() {  # role file, output file; extra stdin sections appended by the caller
   deny="Read(/$HOME/**),Read(//Volumes/**),Read(//private/tmp/**),Read(//tmp/**),Read(**/.env),Read(**/.env.*)"
   # env -u: a stale ANTHROPIC_API_KEY in the shell beats the claude.ai login in -p
   # and fails with "Invalid API key". The job runs on the login, like the schedule.
-  (cd "$WT" && env -u ANTHROPIC_API_KEY "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools "$allow" \
+  # A CLAUDE_CONFIG_DIR set by hand, even to the default dir, makes claude read a
+  # separate keychain entry ("Claude Code-credentials-<hash>") that can be long
+  # expired: "OAuth session expired". For the default dir, unset it.
+  local envargs=(-u ANTHROPIC_API_KEY)
+  [ "$CFG" = "$HOME/.claude" ] && envargs+=(-u CLAUDE_CONFIG_DIR)  # harness:shared
+  (cd "$WT" && env "${envargs[@]}" "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools "$allow" \
       --disallowedTools "$deny" --no-session-persistence --output-format text < "$RUN/$2.prompt") > "$RUN/$2.out" 2>>"$LOG"
 }
 HARNESS_MANIFEST="$WT/profiles/$profile/manifest.json"
