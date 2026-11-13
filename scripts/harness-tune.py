@@ -20,6 +20,7 @@ transcript said reaches the report except signal names, counts and citations.
 import json
 import os
 import re
+import shutil
 import sys
 import time
 import urllib.request
@@ -60,7 +61,13 @@ HOOK_RE = re.compile(r"([A-Za-z0-9_-]+\.(?:sh|py|js|cjs|mjs))")
 
 
 def _token(t):
-    return t if t and TOKEN_SAFE.match(t) else ""
+    return t if t and TOKEN_SAFE.match(t) and not TOKEN_RE.search(t) else ""
+
+
+def _known_program(word):
+    """Keep a program name only if it is a bare command on PATH. A path or a
+    project script (which may carry a client name) is dropped."""
+    return word if "/" not in word and shutil.which(word) else ""
 
 
 def _detail(name, inp):
@@ -70,7 +77,7 @@ def _detail(name, inp):
         for seg in re.split(r"&&|\|\||;|\|", str(inp.get("command", ""))):
             words = [w for w in seg.split() if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
             if words and words[0] not in ("cd", "sudo", "time", "timeout", "env"):
-                return _token(os.path.basename(words[0]))
+                return _token(_known_program(words[0]))
         return ""
     if name in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit"):
         ext = os.path.splitext(str(inp.get("file_path", "")))[1]
@@ -123,7 +130,8 @@ def collect(cfg_dir, days, out_dir):
                         elif re.search(r"hook", text[:300], re.I):
                             kind = "hook_block"
                             m = HOOK_RE.search(text[:300])
-                            detail = _token(m.group(1)) if m else ""
+                            # Only a hook this harness installed, never a name from the text alone.
+                            detail = _token(m.group(1)) if m and Path(cfg_dir, "hooks", m.group(1)).is_file() else ""
                         else:
                             kind = "tool_error"
                         key = f"{name}:{detail}" if detail else name
