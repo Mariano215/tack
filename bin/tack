@@ -44,6 +44,8 @@ Profile commands:
   tack install <profile>       Clone a missing profile, then apply it.
   tack sync [--push]           Update core and profile repos, then re-apply.
   tack status                  Show active profiles and configured runtime state.
+  tack tune [--profile P]      Mine last week's sessions, open a draft PR of cited
+                               harness edits. --notify, --install-schedule.
 
 Workspace commands:
   tack open <profile>          Open both installed agents in one workspace.
@@ -813,6 +815,22 @@ cmd_status() {
   fi
 }
 
+# Self-tuning job (scripts/harness-tune.sh). Runs from the profile's core
+# submodule, against the config dir that profile actually ran in.
+cmd_tune() {
+  local profile="" a prev=""
+  for a in "$@"; do [ "$prev" = --profile ] && profile="$a"; prev="$a"; done
+  [ -n "$profile" ] || profile="$( [ -f "$ACTIVE_FILE" ] && tr -d '\r\n' < "$ACTIVE_FILE" )"
+  local cfg="$CLAUDE_DIR"
+  if [ -n "$profile" ] && [ "$profile" != "$( [ -f "$ACTIVE_FILE" ] && tr -d '\r\n' < "$ACTIVE_FILE" )" ] \
+     && [ -f "$PROFILE_HOME/$profile/.harness-active" ]; then
+    cfg="$PROFILE_HOME/$profile"
+  fi
+  local core="${TACK_TUNE_REPO:-$(repo_dir "${profile:-dev}")/core}"
+  [ -f "$core/scripts/harness-tune.sh" ] || { echo "tack tune: $core/scripts/harness-tune.sh not found. Fix: tack sync, or set TACK_TUNE_REPO to a core checkout." >&2; return 2; }
+  CLAUDE_CONFIG_DIR="$cfg" TACK_TUNE_REPO="$core" bash "$core/scripts/harness-tune.sh" "$@"
+}
+
 # Commands return the apply status, so the caller (a script, a hook, CI) can
 # tell a real sync from one that pulled fine and then failed to apply.
 case "${1:-list}" in
@@ -826,5 +844,6 @@ case "${1:-list}" in
   install) shift; cmd_install "$@" ;;
   sync)    shift; cmd_sync "$@" ;;
   status)  cmd_status ;;
+  tune)    shift; cmd_tune "$@" ;;
   *) echo "tack: unknown command '${1:-}'. Try: tack --help" >&2; exit 2 ;;
 esac

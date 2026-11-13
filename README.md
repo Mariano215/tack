@@ -335,6 +335,51 @@ that a sync cannot carry, rather than reporting success and leaving them behind.
 | `tack install <name>` | Clone `$HARNESS_ORG/tack-<name>` and apply it |
 | `tack sync [--push]` | Pull every profile, advance its engine pin, re-apply the active one |
 | `tack status` | Active profile per agent, isolated config dirs, MCP servers, plugin count |
+| `tack tune` | Mine last week's sessions and open a draft PR of cited harness edits (see below) |
+
+## Weekly self-tuning (`tack tune`)
+`tack tune` follows the method of google-research/harness2, without its replay
+step. It reads the last 7 days of session transcripts for the active profile and
+counts signals: tool errors, hook blocks, rejected tool calls, user corrections,
+compactions, and skills the router asked for but no session loaded. Two
+proposers draft edits from that evidence. INV covers how the agent works, and
+DOM covers what it knows. A gate then drops any edit that has no citation, that
+is cited in only one session, or that touches a path outside `skills/`,
+`agents/`, `commands/`, `output-styles/`, `templates/CLAUDE.md`,
+`templates/AGENTS.md` and `hooks/skill-routes.json`. A composer merges the rest
+or keeps the base. If `scripts/check.sh` passes, the job opens a **draft PR**
+labeled `tack-tune`. It never pushes `main`, so `tack sync` spreads nothing until you
+merge.
+
+The next run reads what you did with each earlier tune PR. A closed PR becomes a
+`rejected` row in the ledger (`harness-tune/ledger.jsonl` in the config dir). The
+job does not propose that cue again. When a PR has been merged for 7 days, the
+job compares the signal rate before and after the merge and records the edit as
+`helped`, `hurt`, `no_effect` or `confounded`. Transcripts never enter the repo.
+The report holds only signal names, counts and `session:line` citations.
+
+```bash
+tack tune                        # run once now
+tack tune --install-schedule     # macOS: run Sunday 02:00, Telegram report Sunday 08:00
+tack tune --uninstall-schedule   # undo
+tack tune --notify               # resend the latest report
+```
+
+Telegram setup (one time): message `@BotFather`, send `/newbot`, and copy the
+token. Send your bot any message. Then open
+`https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `message.chat.id`.
+
+```bash
+mkdir -p ~/.config/tack
+printf 'TELEGRAM_BOT_TOKEN=...\nTELEGRAM_CHAT_ID=...\n' > ~/.config/tack/tune.env
+chmod 600 ~/.config/tack/tune.env
+```
+
+The message has "Review PR" and "Open report" buttons, plus a prompt you can
+paste into `claude`. To adopt the edits, merge the PR. To reject them, close it
+with a one-line reason, and the next run learns from that reason. launchd
+starts a missed run when the Mac wakes. It does not start one while the Mac is
+off.
 
 ## Configuration
 

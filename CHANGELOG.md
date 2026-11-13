@@ -8,6 +8,12 @@ existing profile needs.
 
 - Codex installs `read-document` too. Its SKILL.md no longer assumes
   Claude Code's Read tool or config path.
+- `tack tune`: a weekly self-tuning job modeled on google-research/harness2.
+  It mines the last 7 days of transcripts, drafts cited edits to skills,
+  agents, commands and skill routes, drops uncited and single-session edits,
+  and opens a draft PR labeled `tack-tune`. Closed PRs feed a ledger that
+  blocks the same proposal next week. `--install-schedule` adds macOS launchd
+  jobs (Sunday 02:00 run, 08:00 Telegram report with PR buttons).
 - claude-mem telemetry and error reporting are off: base env sets
   `CLAUDE_MEM_TELEMETRY` and `CLAUDE_MEM_TELEMETRY_ERRORS` to false, and the
   setup script exports both for the worker it starts.
