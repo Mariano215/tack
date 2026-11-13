@@ -180,6 +180,8 @@ def gate(proposal_path, signals_path, ledger_path, out_path):
 def _reject_reason(e, known, refused):
     if not isinstance(e, dict):
         return "not an object"
+    if TOKEN_RE.search(json.dumps(e)):  # first: a later reason would echo the path into the report
+        return "contains a token-like string"
     path = str(e.get("path", ""))
     if not path or path.startswith("/") or ".." in Path(path).parts:
         return "bad path"
@@ -191,8 +193,6 @@ def _reject_reason(e, known, refused):
         return "no cue"
     if not str(e.get("why", "")).strip():
         return "no why (the ledger needs it as the lesson)"
-    if TOKEN_RE.search(json.dumps(e)):
-        return "contains a token-like string"
     if str(e.get("cue", "")).strip().lower() in refused:
         return "cue was rejected or hurt before (ledger)"
     cites = [c for c in (e.get("citations") or []) if isinstance(c, str)]
@@ -324,7 +324,8 @@ def report(run_dir, out_md):
         out += ["None. Keeping the current harness is a valid result."]
     if final.get("dropped"):
         out += ["", "## Dropped", ""]
-        out += [f"- `{e.get('path')}`: {e.get('drop_reason')}" for e in final["dropped"]]
+        out += [f"- `{'(withheld)' if TOKEN_RE.search(json.dumps(e)) else e.get('path')}`: {e.get('drop_reason')}"
+                for e in final["dropped"]]
     if ledger:
         out += ["", "## Ledger (what earlier edits did)", "", "| verdict | cue | evidence |", "|---|---|---|"]
         out += [f"| {r['verdict']} | {r['cue']} | {r['evidence']} |" for r in ledger[-10:]]

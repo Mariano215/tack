@@ -144,10 +144,19 @@ ask() {  # role file, output file; extra stdin sections appended by the caller
     echo "<ledger>"; cat "$STATE/ledger.jsonl" 2>/dev/null; echo "</ledger>"
     cat
   } > "$RUN/$2.prompt"
-  # Deny the usual secret stores. shortcut: not a full worktree jail, verify Read scope on the first real run.
-  (cd "$WT" && "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools Read,Grep,Glob \
-      --disallowedTools "Read(~/.config/**)" "Read(~/.ssh/**)" "Read(~/.aws/**)" "Read(~/.gnupg/**)" \
-        "Read(**/.env)" "Read(**/.env.*)" "Grep(~/.config/**)" "Grep(~/.ssh/**)" \
+  # Allow the three tools on the worktree only ("//" = absolute path). In -p nobody can
+  # approve a prompt, so a path outside the allow rules is refused. The deny list
+  # is a second wall, the same for every tool.
+  # shortcut: permission rules, not an OS sandbox; verify on the first real run.
+  local allow="" deny="" t d
+  for t in Read Grep Glob; do
+    allow="$allow${allow:+,}$t(/$WT/**)"
+    for d in "$HOME/.config" "$HOME/.ssh" "$HOME/.aws" "$HOME/.gnupg"; do deny="$deny${deny:+,}$t(/$d/**)"; done
+    for d in "$HOME/.docker" "$HOME/.kube"; do deny="$deny,$t(/$d/**)"; done
+    for d in "$HOME/.netrc" "$HOME/.npmrc" "$HOME/.claude.json" "$HOME/.claude/.credentials.json"; do deny="$deny,$t(/$d)"; done  # harness:shared
+    deny="$deny,$t(**/.env),$t(**/.env.*)"
+  done
+  (cd "$WT" && "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools "$allow" --disallowedTools "$deny" \
       --no-session-persistence --output-format text < "$RUN/$2.prompt") > "$RUN/$2.out" 2>>"$LOG"
 }
 HARNESS_MANIFEST="$WT/profiles/$profile/manifest.json"
