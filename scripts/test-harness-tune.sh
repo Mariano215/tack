@@ -26,7 +26,7 @@ for s in s1 s2; do
   cat > "$CFG/projects/p/$s.jsonl" <<'EOF'
 {"type":"user","message":{"role":"user","content":"Intent detected. Invoke the Skill tool with skill \"demo\" before responding."}}
 {"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}
-{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":true,"content":"Exit code 1 boom"}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":true,"content":"Exit code 1\nzsh:1: operation not permitted: /dev/null"}]}}
 EOF
 done
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}' \
@@ -56,18 +56,18 @@ BIN="$TMP/bin"; mkdir -p "$BIN"
 cat > "$BIN/claude" <<'EOF'
 #!/usr/bin/env bash
 p="$(cat)"
-good='{"dimension":"inv","path":"skills/demo/SKILL.md","action":"replace","old":"OLD TRIGGER","new":"Use for demo work.","signal":"tool_error:Bash:ls","cue":"demo trigger","why":"Bash failed in two sessions","citations":["s1:3","s2:3"]}'
+good='{"dimension":"inv","path":"skills/demo/SKILL.md","action":"replace","old":"OLD TRIGGER","new":"Use for demo work.","signal":"tool_error:Bash:ls:sandbox-denied","cue":"demo trigger","why":"Bash failed in two sessions","citations":["s1:3","s2:3"]}'
 case "$p" in
   *"Your job is COMPOSE"*) printf '```json\n{"verdict":"EDITS","edits":[%s]}\n```\n' "$good" ;;
   *"dimension is INV"*)
     printf '```json\n{"verdict":"EDITS","edits":[%s,
-      {"path":"skills/demo/SKILL.md","action":"create","new":"x","signal":"tool_error:Bash:ls","cue":"uncited","why":"w","citations":[]},
-      {"path":"skills/demo/X.md","action":"create","new":"x","signal":"tool_error:Bash:ls","cue":"single","why":"w","citations":["s1:3"]},
-      {"path":"scripts/evil.sh","action":"create","new":"x","signal":"tool_error:Bash:ls","cue":"code","why":"w","citations":["s1:3","s2:3"]},
+      {"path":"skills/demo/SKILL.md","action":"create","new":"x","signal":"tool_error:Bash:ls:sandbox-denied","cue":"uncited","why":"w","citations":[]},
+      {"path":"skills/demo/X.md","action":"create","new":"x","signal":"tool_error:Bash:ls:sandbox-denied","cue":"single","why":"w","citations":["s1:3"]},
+      {"path":"scripts/evil.sh","action":"create","new":"x","signal":"tool_error:Bash:ls:sandbox-denied","cue":"code","why":"w","citations":["s1:3","s2:3"]},
       {"path":"skills/demo/Y.md","action":"create","new":"x","signal":"correction:-","cue":"bypass","why":"w","citations":["s3:2","s1:3"]},
-      {"path":"skills/demo/Z.md","action":"create","new":"x","signal":"tool_error:Bash:ls","cue":"nowhy","why":"","citations":["s1:3","s2:3"]},
-      {"path":"skills/demo/run.sh","action":"create","new":"x","signal":"tool_error:Bash:ls","cue":"script","why":"w","citations":["s1:3","s2:3"]},
-      {"path":"skills/demo/T.md","action":"create","new":"123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","signal":"tool_error:Bash:ls","cue":"token","why":"w","citations":["s1:3","s2:3"]}]}\n```\n' "$good" ;;
+      {"path":"skills/demo/Z.md","action":"create","new":"x","signal":"tool_error:Bash:ls:sandbox-denied","cue":"nowhy","why":"","citations":["s1:3","s2:3"]},
+      {"path":"skills/demo/run.sh","action":"create","new":"x","signal":"tool_error:Bash:ls:sandbox-denied","cue":"script","why":"w","citations":["s1:3","s2:3"]},
+      {"path":"skills/demo/T.md","action":"create","new":"123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","signal":"tool_error:Bash:ls:sandbox-denied","cue":"token","why":"w","citations":["s1:3","s2:3"]}]}\n```\n' "$good" ;;
   *) printf '```json\n{"verdict":"KEEP_BASE","edits":[]}\n```\n' ;;
 esac
 EOF
@@ -91,7 +91,7 @@ run() {
 # Week 1: one edit survives the gate and lands as a draft PR.
 run w1 || fail "week 1 run exited non-zero"
 R="$TMP/state/runs/w1-dev"
-jq -e '.signals[] | select(.signal=="tool_error:Bash:ls" and .count==2 and .sessions==2)' "$R/summary.json" >/dev/null \
+jq -e '.signals[] | select(.signal=="tool_error:Bash:ls:sandbox-denied" and .count==2 and .sessions==2)' "$R/summary.json" >/dev/null \
   || fail "tool_error:Bash:ls should be 2 rows in 2 sessions (program name as detail)"
 jq -e '.signals[] | select(.signal=="route_ignored:demo" and .sessions==2)' "$R/summary.json" >/dev/null \
   || fail "route_ignored:demo not found"
@@ -103,7 +103,7 @@ grep -q 'acme' "$R/summary.json" && fail "a project script name became a signal 
 [ "$(jq '.dropped|length' "$R/inv.gated.json")" = 7 ] || fail "gate should drop uncited, single-session, scripts/, skill script, unrelated-citation, no-why and token edits"
 jq -e '.dropped[] | select(.cue=="bypass") | .drop_reason | test("fewer than")' "$R/inv.gated.json" >/dev/null \
   || fail "an unrelated citation from a second session must not satisfy the two-session rule"
-grep -q 'boom' "$R/inv.prompt" && fail "transcript snippets reached the model prompt"
+grep -q 'dev/null' "$R/inv.prompt" && fail "transcript snippets reached the model prompt"
 jq -e '.dropped[] | select(.path=="scripts/evil.sh") | .drop_reason | test("outside")' "$R/inv.gated.json" >/dev/null \
   || fail "scripts/ edit not dropped as off-limits"
 [ "$(jq '.edits|length' "$R/final.json")" = 1 ] || fail "expected exactly one applied edit"

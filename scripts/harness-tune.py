@@ -60,6 +60,23 @@ TOKEN_SAFE = re.compile(r"^[A-Za-z0-9_.-]{1,40}$")
 HOOK_RE = re.compile(r"([A-Za-z0-9_-]+\.(?:sh|py|js|cjs|mjs))")
 
 
+# Error categories from a fixed list: the label is ours, never the error text.
+ERROR_CATEGORIES = (
+    ("sandbox-denied", re.compile(r"operation not permitted", re.I)),
+    ("cmd-not-found", re.compile(r"command not found", re.I)),
+    ("bad-flag", re.compile(r"invalid value|unknown option|illegal option|unrecognized option|invalid option", re.I)),
+    ("no-such-file", re.compile(r"no such file or directory", re.I)),
+    ("permission", re.compile(r"permission denied", re.I)),
+    ("timeout", re.compile(r"timed out|timeout", re.I)),
+    ("python-traceback", re.compile(r"Traceback \(most recent call last\)")),
+)
+
+
+def _category(text):
+    head = text[:800]
+    return next((name for name, rx in ERROR_CATEGORIES if rx.search(head)), "")
+
+
 def _token(t):
     return t if t and TOKEN_SAFE.match(t) and not TOKEN_RE.search(t) else ""
 
@@ -134,7 +151,7 @@ def collect(cfg_dir, days, out_dir):
                             detail = _token(m.group(1)) if m and Path(cfg_dir, "hooks", m.group(1)).is_file() else ""
                         else:
                             kind = "tool_error"
-                        key = f"{name}:{detail}" if detail else name
+                        key = ":".join(x for x in (name, detail, _category(text) if kind == "tool_error" else "") if x)
                         rows.append({"session": sid, "line": n, "kind": kind, "key": key, "snippet": _snip(text)})
                 elif typ == "user" and isinstance(content, str) and prev_type == "assistant":
                     if CORRECTION_RE.match(content):
