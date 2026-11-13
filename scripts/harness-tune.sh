@@ -93,7 +93,9 @@ fi
 date="$(date +%Y-%m-%d)"
 stamp="${TACK_TUNE_STAMP:-$(date +%Y-%m-%d-%H%M)}"  # a rerun the same day gets its own run dir and branch
 RUN="$STATE/runs/$stamp-$profile"
-WT="$RUN/wt"
+# The worktree lives outside HOME and /Volumes, so the proposers can be denied
+# both whole trees (where transcripts, secrets and client files live).
+WT="$(cd -P "$(mktemp -d "${TMPDIR:-/var/tmp}/tack-tune.XXXXXX")" && pwd)/wt"
 branch="tune/$profile-$stamp"
 mkdir -p "$RUN"
 LOG="$RUN/run.log"
@@ -111,7 +113,7 @@ latest() {  # status [error]: the record --notify reads
 fail() {  # the message quotes the last log line, so the 08:00 report says what broke
   local last; last="$(grep -v '^[[:space:]]*$' "$LOG" 2>/dev/null | tail -1 | cut -c1-200)"
   echo "harness-tune: $1" | tee -a "$LOG" >&2; latest failed "$1${last:+: $last}"; exit 1; }
-cleanup() { [ -d "$WT" ] && git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1; }
+cleanup() { [ -d "$WT" ] && git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1; rmdir "${WT%/wt}" 2>/dev/null; }
 trap cleanup EXIT
 jq -n --arg p "$profile" --arg d "$date" '{profile:$p, date:$d, check:"not run"}' > "$RUN/meta.json"
 latest running  # replaced at every exit; left as is, notify reports an unfinished run
@@ -144,28 +146,25 @@ ask() {  # role file, output file; extra stdin sections appended by the caller
     echo "<ledger>"; cat "$STATE/ledger.jsonl" 2>/dev/null; echo "</ledger>"
     cat
   } > "$RUN/$2.prompt"
-  # Allow the three tools on the worktree only ("//" = absolute path). In -p nobody can
-  # approve a prompt, so a path outside the allow rules is refused. The deny list
-  # is a second wall, the same for every tool.
-  # shortcut: permission rules, not an OS sandbox; verify on the first real run.
-  local allow="" deny="" t d
-  for t in Read Grep Glob; do
-    allow="$allow${allow:+,}$t(/$WT/**)"
-    for d in "$HOME/.config" "$HOME/.ssh" "$HOME/.aws" "$HOME/.gnupg"; do deny="$deny${deny:+,}$t(/$d/**)"; done
-    for d in "$HOME/.docker" "$HOME/.kube"; do deny="$deny,$t(/$d/**)"; done
-    for d in "$HOME/.netrc" "$HOME/.npmrc" "$HOME/.claude.json" "$HOME/.claude/.credentials.json"; do deny="$deny,$t(/$d)"; done  # harness:shared
-    deny="$deny,$t(**/.env),$t(**/.env.*)"
-  done
-  (cd "$WT" && "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools "$allow" --disallowedTools "$deny" \
-      --no-session-persistence --output-format text < "$RUN/$2.prompt") > "$RUN/$2.out" 2>>"$LOG"
+  # Path rules use Read(...) only: the CLI applies Read rules to every file-reading
+  # tool (Grep, Glob) and ignores Grep(...)/Glob(...) path rules with a warning.
+  # An allow rule does not confine reads (tested: ~/.zshrc stayed readable), so
+  # deny whole trees instead. Deny wins over allow; the worktree is outside them.
+  # shortcut: permission rules, not an OS sandbox.
+  local allow="Read(/$WT/**)" deny
+  deny="Read(/$HOME/**),Read(//Volumes/**),Read(//private/tmp/**),Read(//tmp/**),Read(**/.env),Read(**/.env.*)"
+  # env -u: a stale ANTHROPIC_API_KEY in the shell beats the claude.ai login in -p
+  # and fails with "Invalid API key". The job runs on the login, like the schedule.
+  (cd "$WT" && env -u ANTHROPIC_API_KEY "$CLAUDE_BIN" -p --tools Read,Grep,Glob --allowedTools "$allow" \
+      --disallowedTools "$deny" --no-session-persistence --output-format text < "$RUN/$2.prompt") > "$RUN/$2.out" 2>>"$LOG"
 }
 HARNESS_MANIFEST="$WT/profiles/$profile/manifest.json"
 
 # 3. Propose (INV and DOM in parallel), then gate each.
 ask inv.md inv < /dev/null & p1=$!
 ask dom.md dom < /dev/null & p2=$!
-wait $p1 || fail "INV proposer failed, see $LOG"
-wait $p2 || fail "DOM proposer failed, see $LOG"
+wait $p1 || fail "INV proposer failed: $(head -c 200 "$RUN/inv.out")"
+wait $p2 || fail "DOM proposer failed: $(head -c 200 "$RUN/dom.out")"
 for d in inv dom; do
   python3 "$PY" gate "$RUN/$d.out" "$RUN/evidence/signals.jsonl" "$STATE/ledger.jsonl" "$RUN/$d.gated.json" >> "$LOG" 2>&1 \
     || fail "gate failed on $d, see $LOG"
@@ -175,7 +174,7 @@ n="$(jq -s '[.[].edits[]]|length' "$RUN/inv.gated.json" "$RUN/dom.gated.json" | 
 
 # 4. Compose, gate again (the composer must not invent citations), apply.
 { echo "<proposals>"; jq -s '{inv:.[0], dom:.[1]}' "$RUN/inv.gated.json" "$RUN/dom.gated.json"; echo "</proposals>"; } \
-  | ask compose.md compose || fail "composer failed, see $LOG"
+  | ask compose.md compose || fail "composer failed: $(head -c 200 "$RUN/compose.out")"
 python3 "$PY" gate "$RUN/compose.out" "$RUN/evidence/signals.jsonl" "$STATE/ledger.jsonl" "$RUN/compose.gated.json" >> "$LOG" 2>&1 \
   || fail "gate failed on compose, see $LOG"
 python3 "$PY" apply "$RUN/compose.gated.json" "$WT" "$RUN/final.json" >> "$LOG" 2>&1 || fail "apply failed, see $LOG"
