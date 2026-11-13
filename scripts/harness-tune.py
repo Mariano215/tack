@@ -53,6 +53,33 @@ def _text(content):
     return ""
 
 
+# Detail tokens give the proposers something to point at without passing
+# transcript text: each must match TOKEN_SAFE, or it is dropped.
+TOKEN_SAFE = re.compile(r"^[A-Za-z0-9_.-]{1,40}$")
+HOOK_RE = re.compile(r"([A-Za-z0-9_-]+\.(?:sh|py|js|cjs|mjs))")
+
+
+def _token(t):
+    return t if t and TOKEN_SAFE.match(t) else ""
+
+
+def _detail(name, inp):
+    """Bash: the program run. File tools: the file extension. Skill: its name."""
+    inp = inp if isinstance(inp, dict) else {}
+    if name == "Bash":
+        for seg in re.split(r"&&|\|\||;|\|", str(inp.get("command", ""))):
+            words = [w for w in seg.split() if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
+            if words and words[0] not in ("cd", "sudo", "time", "timeout", "env"):
+                return _token(os.path.basename(words[0]))
+        return ""
+    if name in ("Read", "Edit", "Write", "MultiEdit", "NotebookEdit"):
+        ext = os.path.splitext(str(inp.get("file_path", "")))[1]
+        return _token(ext)
+    if name == "Skill":
+        return _token(str(inp.get("skill", "")))
+    return ""
+
+
 def _snip(s):
     return (s.strip().splitlines() or [""])[0][:160]
 
@@ -82,7 +109,7 @@ def collect(cfg_dir, days, out_dir):
                 if typ == "assistant" and isinstance(content, list):
                     for c in content:
                         if isinstance(c, dict) and c.get("type") == "tool_use":
-                            tool_names[c.get("id")] = c.get("name", "?")
+                            tool_names[c.get("id")] = (c.get("name", "?"), _detail(c.get("name"), c.get("input")))
                             if c.get("name") == "Skill":
                                 used.add(str((c.get("input") or {}).get("skill", "")))
                 elif typ == "user" and isinstance(content, list):
@@ -90,14 +117,17 @@ def collect(cfg_dir, days, out_dir):
                         if not (isinstance(c, dict) and c.get("type") == "tool_result" and c.get("is_error")):
                             continue
                         text = _text(c.get("content"))
-                        name = tool_names.get(c.get("tool_use_id"), "?")
+                        name, detail = tool_names.get(c.get("tool_use_id"), ("?", ""))
                         if text.startswith(REJECT_PREFIX):
                             kind = "rejected"
                         elif re.search(r"hook", text[:300], re.I):
                             kind = "hook_block"
+                            m = HOOK_RE.search(text[:300])
+                            detail = _token(m.group(1)) if m else ""
                         else:
                             kind = "tool_error"
-                        rows.append({"session": sid, "line": n, "kind": kind, "key": name, "snippet": _snip(text)})
+                        key = f"{name}:{detail}" if detail else name
+                        rows.append({"session": sid, "line": n, "kind": kind, "key": key, "snippet": _snip(text)})
                 elif typ == "user" and isinstance(content, str) and prev_type == "assistant":
                     if CORRECTION_RE.match(content):
                         rows.append({"session": sid, "line": n, "kind": "correction", "key": "-", "snippet": _snip(content)})
