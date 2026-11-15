@@ -36,8 +36,9 @@ decide() {
 # Heredoc bodies written as text (a log entry, a commit message) made the guard
 # ask or deny on a body that only mentions "git push" or ".env". A body is
 # dropped only when all of these hold, otherwise the whole command is checked:
-#   - the line is a plain write: it starts with cat, tee, git commit or git tag
-#     (a path prefix is allowed), and nothing is piped onward (no "|" after <<);
+#   - the line is a plain write: git commit or git tag, or cat or tee into a
+#     .md, .txt or .log file outside .git/ (a path prefix on the command is
+#     allowed), and nothing is piped onward (no "|" after <<);
 #   - the delimiter is a quoted bare word ('EOF' or "EOF"), so nothing expands;
 #   - the exact terminator line is found before the input ends.
 #   - nothing outside the body can run it: no $(, backtick, <(, eval, line
@@ -61,8 +62,20 @@ cmd=$(printf '%s\n' "$cmd" | awk '
     # The segment that holds <<: text after the last ; && or || before it.
     head = substr($0, 1, i - 1); sub(/.*(;|&&|\|\|)/, "", head); sub(/^[ \t]*/, "", head)
     if (index(head, "|") > 0) next
-    if (head !~ /^([^ \t;&|]*\/)?(cat|tee)([ \t]|$)/ && head !~ /^([^ \t;&|]*\/)?git[ \t]+(commit|tag)([ \t]|$)/) next
     rest = substr($0, i + 2)
+    if (head ~ /^([^ \t;&|]*\/)?git[ \t]+(commit|tag)([ \t]|$)/) {
+      ok = 1
+    } else if (head ~ /^([^ \t;&|]*\/)?(cat|tee)([ \t]|$)/) {
+      # cat or tee only when the target is a notes file: .md, .txt or .log,
+      # never under .git/ (hooks run from there) and never a shell rc file.
+      w = head " " rest; ok = 0
+      if (match(w, />>?[ \t]*[^ \t;&|<>]+/)) { tgt = substr(w, RSTART, RLENGTH); sub(/^>>?[ \t]*/, "", tgt) }
+      else if (match(head, /tee([ \t]+-[a-z]+)*[ \t]+[^ \t;&|<>]+/)) { tgt = substr(head, RSTART, RLENGTH); sub(/.*[ \t]/, "", tgt) }
+      else tgt = ""
+      gsub(/["\047]/, "", tgt)
+      if (tgt ~ /\.(md|markdown|txt|log)$/ && tgt !~ /(^|\/)\.git\// && tgt !~ /(^|\/)\.[a-z]*(rc|profile)$/) ok = 1
+    } else ok = 0
+    if (!ok) next
     if (index(rest, "|") > 0) next
     strip_tabs = (substr(rest, 1, 1) == "-"); if (strip_tabs) rest = substr(rest, 2)
     sub(/^[ \t]*/, "", rest)
@@ -80,7 +93,7 @@ cmd=$(printf '%s\n' "$cmd" | awk '
   }
   END { if (inhd) printf "%s", orig; else printf "%s", out }') || exit 0
 if [ "$cmd" != "$orig_cmd" ]; then
-  RUNNER='\$\(|`|<\(|\\$|(^|[^a-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|eval|source|exec|env|sudo|doas|xargs|nohup|time|watch|ssh|python[0-9.]*|node|deno|bun|perl|ruby|php|osascript|awk|sed)([^a-z0-9_.-]|$)|(^|[;&|[:space:]])\.[[:space:]]'
+  RUNNER='\$\(|`|<\(|\\$|(^|[^a-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|eval|source|exec|env|sudo|doas|xargs|nohup|time|watch|ssh|python[0-9.]*|node|deno|bun|perl|ruby|php|osascript|awk|sed|chmod|make|install)([^a-z0-9_.-]|$)|(^|[;&|[:space:]])\.[[:space:]]|(^|[;&|[:space:]])\./'
   # A grep error (exit 2) also keeps the original: fail toward checking more.
   printf '%s\n' "$cmd" | tr '[:upper:]' '[:lower:]' | grep -Eq "$RUNNER"; rr=$?
   [ "$rr" -eq 1 ] || cmd="$orig_cmd"

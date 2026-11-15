@@ -96,6 +96,13 @@ check deny 'cat <<< "$(cat .env)"'
 check none "$(printf "cd /x && cat >> log.md <<'EOF'\nnote: git push later\nEOF")"
 # The exact log-append shape hooks/session-summary.sh asks for must pass.
 check none "$(printf "date '+%%n## %%Y-%%m-%%d %%H:%%M' >> .agent/log.md && cat >> .agent/log.md <<'EOF'\n- next: git push, rotate the .env key\nEOF")"
+# cat or tee count as text only into .md, .txt or .log outside .git/.
+check deny "$(printf "cat > x <<'EOF'\ncat .env\nEOF\nchmod +x x; ./x")"
+check ask  "$(printf "cat > .git/hooks/notes.md <<'EOF'\ngit push\nEOF")"
+check ask  "$(printf "cat >> ~/.zshrc <<'EOF'\ngit push\nEOF")"
+check ask  "$(printf "cat > run <<'EOF'\ngit push\nEOF")"
+check none "$(printf "tee -a notes.txt <<'EOF'\nthen git push\nEOF")"
+check none "$(printf "cat <<'EOF' > docs/plan.md\nstep: git push\nEOF")"
 # A quoted body is still checked when something outside it can run it.
 check deny "$(printf "x=1; eval \"\$(\ncat <<'EOF'\ncat ~/.aws/credentials\nEOF\n)\"")"
 check ask  "$(printf "cat <<'EOF' \\\\\n| sh\ngit push\nEOF")"
@@ -109,7 +116,7 @@ check deny "$(printf 'cat <<\"E\"OF\nx\nEOF\ncat .env')"
 check ask  "$(printf 'echo \"<<EOF\"\ngit push\nEOF')"
 check ask  "$(printf 'cat > a <<EOF\n$(git push)\nEOF')"
 check deny "$(printf 'cat > a <<EOF\n`cat .env`\nEOF')"
-check none "$(printf "cat > a <<'EOF'\n\$(git push) is only text here\nEOF")"
+check none "$(printf "cat > a.md <<'EOF'\n\$(git push) is only text here\nEOF")"
 
 printf '' | bash "$HOOK" >/dev/null 2>&1 || fail "empty stdin should exit 0"
 printf 'not json' | bash "$HOOK" >/dev/null 2>&1 || fail "malformed stdin should exit 0"
