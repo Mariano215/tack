@@ -38,7 +38,7 @@ decide() {
 # dropped only when all of these hold, otherwise the whole command is checked:
 #   - the line is a plain write: it starts with cat, tee, git commit or git tag
 #     (a path prefix is allowed), and nothing is piped onward (no "|" after <<);
-#   - the delimiter is a bare word, optionally in one matching pair of quotes;
+#   - the delimiter is a quoted bare word ('EOF' or "EOF"), so nothing expands;
 #   - the exact terminator line is found before the input ends.
 # Everything else (bash <<, python - <<, cat <<EOF | sh, odd quoting) keeps its
 # body, so this can only remove false asks, never hide a command that runs.
@@ -47,9 +47,7 @@ cmd=$(printf '%s\n' "$cmd" | awk '
   { orig = orig $0 "\n" }
   inhd {
     t = $0; if (strip_tabs) sub(/^\t+/, "", t)
-    if (t == delim) { inhd = 0; next }
-    # An unquoted body runs $(...) and backticks, so it is not just text.
-    if (!quoted && (index($0, "$(") > 0 || index($0, "`") > 0)) keepall = 1
+    if (t == delim) inhd = 0
     next
   }
   {
@@ -64,23 +62,19 @@ cmd=$(printf '%s\n' "$cmd" | awk '
     if (index(rest, "|") > 0) next
     strip_tabs = (substr(rest, 1, 1) == "-"); if (strip_tabs) rest = substr(rest, 2)
     sub(/^[ \t]*/, "", rest)
+    # Only a quoted delimiter makes the body literal text. An unquoted body
+    # expands $(...), backticks and backslash continuations, so it stays checked.
     q = substr(rest, 1, 1)
-    if (q == "\"" || q == "\047") {
-      rest = substr(rest, 2)
-      if (!match(rest, /^[A-Za-z_][A-Za-z0-9_]*/)) next
-      d = substr(rest, RSTART, RLENGTH)
-      if (substr(rest, RLENGTH + 1, 1) != q) next
-      after = substr(rest, RLENGTH + 2, 1)
-    } else {
-      if (!match(rest, /^[A-Za-z_][A-Za-z0-9_]*/)) next
-      d = substr(rest, RSTART, RLENGTH)
-      after = substr(rest, RLENGTH + 1, 1)
-    }
+    if (q != "\"" && q != "\047") next
+    rest = substr(rest, 2)
+    if (!match(rest, /^[A-Za-z_][A-Za-z0-9_]*/)) next
+    d = substr(rest, RSTART, RLENGTH)
+    if (substr(rest, RLENGTH + 1, 1) != q) next
+    after = substr(rest, RLENGTH + 2, 1)
     if (after != "" && after !~ /[ \t;&>)]/) next
-    quoted = (q == "\"" || q == "\047")
     delim = d; inhd = 1
   }
-  END { if (inhd || keepall) printf "%s", orig; else printf "%s", out }') || exit 0
+  END { if (inhd) printf "%s", orig; else printf "%s", out }') || exit 0
 [ -n "$cmd" ] || exit 0
 
 lc=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')

@@ -83,7 +83,9 @@ check ask  'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.p GIT_CONFIG_VALUE_0=push 
 # deny wins over ask
 check deny 'cat .env && git push'
 # Heredoc bodies are text unless a shell or interpreter reads them.
-check none "$(printf 'cat >> .agent/log.md <<EOF\n- next: git push the branch, rotate .env\nEOF')"
+check none "$(printf "cat >> .agent/log.md <<'EOF'\n- next: git push the branch, rotate .env\nEOF")"
+check deny "$(printf 'cat >> .agent/log.md <<EOF\n- next: git push the branch, rotate .env\nEOF')"
+check ask  "$(printf 'cat > a <<EOF\nx \\\n$(git push)\nEOF')"
 check none "$(printf "git commit -q -F - <<'EOF'\nfix: guard push and .env reads\nEOF")"
 check ask  "$(printf 'cat >> log.md <<EOF\ntext\nEOF\ngit push origin main')"
 check deny "$(printf 'bash <<EOF\ncat ~/.aws/credentials\nEOF')"
@@ -91,7 +93,7 @@ check deny "$(printf "python3 - <<'PY'\nopen('.env').read()\nPY")"
 check ask  "$(printf 'cat <<EOF | sh\ngit push\nEOF')"
 check deny "$(printf 'cat <<-EOF\n\tx\n\tEOF\ncat .env')"
 check deny 'cat <<< "$(cat .env)"'
-check none "$(printf 'cd /x && cat >> log.md <<EOF\nnote: git push later\nEOF')"
+check none "$(printf "cd /x && cat >> log.md <<'EOF'\nnote: git push later\nEOF")"
 check ask  "$(printf '/bin/bash <<EOF\ngit push\nEOF')"
 check ask  "$(printf 'xargs -I{} sh -c {} <<EOF\ngit push\nEOF')"
 check deny "$(printf 'cat > a <<EOF\nnever closed .env')"
