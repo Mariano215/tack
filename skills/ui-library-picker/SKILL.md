@@ -25,7 +25,9 @@ so.
 5. **React 19 with Tailwind v4, and you want a package with upgrades rather
    than copied code**: HeroUI.
 6. **The client has an AlignUI Figma file, or pays for AlignUI Pro**:
-   AlignUI. Otherwise skip it, because its free-tier license is not stated.
+   AlignUI. Its free components are MIT, but most of its value (the Figma
+   library and the Pro blocks) is paid, so without either, shadcn/ui is the
+   simpler choice.
 7. **A brand to match**: load the brand's design tokens first, if your
    profile has a design-system skill. Brand tokens beat any library's
    defaults.
@@ -36,9 +38,9 @@ so.
 |---|---|---|---|---|---|---|
 | **shadcn/ui** | React (Next.js, Vite, Remix) | Tailwind v4 and CSS variables, on Base UI (the default) or Radix | Code copied into the repo by a CLI | MIT | Base UI or Radix primitives | `npx shadcn@latest init` (Radix: `--base radix`) |
 | **coss ui** | React | Tailwind v4 and Base UI, shadcn variables plus info, success and warning | Copied through the shadcn registry | MIT | Base UI primitives | new: `pnpm dlx shadcn@latest init @coss/style`, existing: `pnpm dlx shadcn@latest add @coss/ui` |
-| **AlignUI** | React | Tailwind v4.1 and Radix, CSS custom properties | Copied source blocks, Tailwind set up by a CLI | Free tier of 40+ components, paid Pro with Figma library. Free-tier license not stated | Claims WCAG compliance, built on Radix | `npx @alignui/cli tailwind`, then each component's Radix package |
+| **AlignUI** | React | Tailwind v4.1 and Radix, CSS custom properties | Copied source blocks, Tailwind set up by a CLI | Free components MIT (they ship in the official MIT starter repos); Pro components, blocks and Figma library are paid under AlignUI's own terms | Claims WCAG compliance, built on Radix | `npx @alignui/cli tailwind`, then each component's Radix package |
 | **daisyUI** | Any (pure CSS) | Tailwind plugin with semantic class names, no JavaScript | npm package or CDN | MIT | None built in. You add focus handling and ARIA yourself | `npm i -D daisyui@latest`, then `@plugin "daisyui";` in the CSS |
-| **HeroUI** | React 19 and newer | Tailwind v4 and React Aria Components | npm package | Apache-2.0 (per GitHub, recheck) | React Aria | `npm i @heroui/styles @heroui/react` |
+| **HeroUI** | React 19 and newer | Tailwind v4 and React Aria Components | npm package | Apache-2.0 since April 2026 (MIT before, as NextUI and HeroUI v2) | React Aria | `npm i @heroui/styles @heroui/react` |
 | **Ant Design** | React (a separate Vue port exists) | Its own design tokens through `ConfigProvider`, no Tailwind | npm package | MIT | Not stated in the docs | `npm install antd --save` |
 
 ## Where each one goes wrong
@@ -53,8 +55,12 @@ so.
 - **Ant Design**: its own look is strong. A custom brand or a Tailwind-first
   site fights it. Theme it through `ConfigProvider` seed tokens
   (`colorPrimary`, `borderRadius`), not CSS overrides.
-- **AlignUI**: the best parts are paid, and the license terms are not stated
-  up front. Confirm them before you ship client work on it.
+- **AlignUI**: the free components are MIT, but the Pro components and Figma
+  library are paid under AlignUI's own terms. If a client project uses Pro,
+  confirm who holds the license before you ship.
+- **HeroUI**: Apache-2.0 asks you to keep its NOTICE and license text and to
+  mark files you change. That is fine for client work, but it is more than
+  MIT asks for.
 
 ## Done means
 
@@ -65,4 +71,7 @@ so.
 
 Sources (2026-11-15): ui.shadcn.com/docs, coss.com/ui/docs, alignui.com,
 daisyui.com/docs, heroui.com/en/docs, ant.design/docs/react, and each
-GitHub repo's license field.
+GitHub repo's license field. Licenses rechecked 2026-11-15: HeroUI's LICENSE
+file in heroui-inc/heroui (changed to Apache-2.0 in #6415, 2026-04-09);
+AlignUI's free components in alignui/alignui-nextjs-typescript-starter
+(components/ui, MIT).
