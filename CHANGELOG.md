@@ -6,6 +6,9 @@ existing profile needs.
 
 ## Unreleased
 
+- An apply through an older core pin no longer downgrades `~/.local/bin/tack`.
+  It refreshes only a `tack` that the pinned core's history contains, and
+  otherwise prints `tack left as it is` with the fix (`tack sync --push`).
 - `tack tmux` opens a new session on every run (`audit`, `audit-2`, ...).
   It used to attach to the session of the same name, so every terminal that
   ran it mirrored the same input.

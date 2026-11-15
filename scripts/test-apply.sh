@@ -306,6 +306,20 @@ else
 fi
 rm -rf "$LOCK"
 
+echo "== tack refresh: upgrade an older tack, never downgrade a newer one =="
+TKBIN="$HOME/.local/bin/tack"; mkdir -p "$HOME/.local/bin"
+CFG="$TMP/tackcfg"; mkdir -p "$CFG"
+old_rev="$(git -C "$CORE" rev-list HEAD -- bin/tack | sed -n 2p | tr -d '\r')"
+if [ -n "$old_rev" ]; then
+  git -C "$CORE" show "$old_rev:bin/tack" > "$TKBIN"
+  apply "$CFG" >/dev/null
+  cmp -s "$CORE/bin/tack" "$TKBIN" && ok "older tack refreshed" || bad "older tack from $old_rev was not refreshed"
+fi
+printf '#!/bin/sh\n# newer than this core\n' > "$TKBIN"
+out="$(apply "$CFG")"
+grep -q 'newer than this core' "$TKBIN" && ok "newer tack left alone" || bad "newer tack was overwritten by an older core"
+echo "$out" | grep -q 'tack left as it is' || bad "skipped tack refresh printed no fix"
+
 echo ""
 if [ "$fails" -ne 0 ]; then
   echo "test-apply FAILED ($fails)."

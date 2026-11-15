@@ -245,7 +245,22 @@ python3 "$CORE_DIR/lib/render-claude-md.py" "$CORE_DIR/templates/CLAUDE.md" "$CL
 # running the tack it was first set up with: a fix to tack (like sync re-applying)
 # never arrived through a sync, which is exactly the update it was meant to
 # deliver. Copy on change so tack improvements ride the same path as the engine.
-if [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack"; then
+# Each profile applies through its own pinned core, and pins lag main. Refresh
+# only a tack this core's history has seen, so an older pin never downgrades a
+# newer tack.
+tack_known=1
+if [ -f "$HOME/.local/bin/tack" ] && git -C "$CORE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  tack_known=0
+  tack_installed="$(git hash-object "$HOME/.local/bin/tack" | tr -d '\r')"
+  while read -r c; do
+    [ "$(git -C "$CORE_DIR" rev-parse "$c:bin/tack" 2>/dev/null | tr -d '\r')" = "$tack_installed" ] && { tack_known=1; break; }
+  done <<EOF
+$(git -C "$CORE_DIR" rev-list HEAD -- bin/tack | tr -d '\r')
+EOF
+fi
+if [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" && [ "$tack_known" -eq 0 ]; then
+  echo "  tack left as it is: ~/.local/bin/tack is newer than this core's pin. Fix: tack sync --push"
+elif [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack"; then
   mkdir -p "$HOME/.local/bin"
   # install(1) is missing in some minimal images and Git Bash setups
   { install -m 0755 "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" 2>/dev/null \
