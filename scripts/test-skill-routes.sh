@@ -108,6 +108,9 @@ which ui library should we use for the admin app|ui-library
 pick a component library for this react project|ui-library
 set up daisyui on the marketing site|ui-library
 should we use ant design or heroui|ui-library
+write a new skill for the release checklist|writing-for-agents
+trim our CLAUDE.md, it is too long|writing-for-agents
+update the description in SKILL.md|writing-for-agents
 fix the library import in the ui folder|
 # Guard rails in the router itself.
 /commit these changes now|

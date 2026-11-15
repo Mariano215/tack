@@ -6,6 +6,7 @@ existing profile needs.
 
 ## Unreleased
 
+- New core skill `writing-for-agents`, adapted from mattpocock/skills (MIT, license kept in the skill folder): how to write a skill, CLAUDE.md or AGENTS.md so agents follow it. Routed on writing or editing one.
 - bash-guard skips heredoc text written by cat, tee, git commit or git tag (quoted delimiter such as <<'EOF', nothing piped onward, terminator found), so log entries and commit messages no longer trigger false asks or denies. Anything that a shell could run is still checked.
 - bash-guard no longer skips heredoc text when the same command has git diff, git log with an output flag, a single &, or a process substitution. These could write the hidden text to a file or run it.
 - New core skill `ui-library-picker`: decision rules and checked install commands for shadcn/ui, coss ui, AlignUI, daisyUI, HeroUI and Ant Design, routed by "which UI library" and library names.

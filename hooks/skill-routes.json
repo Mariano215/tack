@@ -85,6 +85,12 @@
       "pattern": "\\b(which|what|pick|choose|recommend|best)\\b.{0,30}\\b(ui|component) (library|kit|framework)\\b|\\b(ui|component) (library|kit) (for|to use)\\b|\\b(shadcn|coss ui|alignui|daisy ?ui|hero ?ui|ant design|antd)\\b",
       "skill": "ui-library-picker",
       "hint": "Pick the component library with ui-library-picker. Re-check the chosen install row with Context7 before installing."
+    },
+    {
+      "id": "writing-for-agents",
+      "pattern": "\\b(write|writing|create|creating|add|new|edit|editing|update|rewrite|improve|trim|tighten)\\b.{0,30}\\b(skill|skill\\.md|claude\\.md|agents\\.md)\\b",
+      "skill": "writing-for-agents",
+      "hint": "Write it with writing-for-agents: a description that triggers on each branch, steps that end on a checkable criterion, reference pushed behind a pointer."
     }
   ]
 }

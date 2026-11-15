@@ -62,6 +62,8 @@ gh repo create "$HARNESS_ORG/tack-<name>" --private --source=. --remote=origin -
 tack use <name>
 ```
 
+Write each new skill with the `writing-for-agents` skill.
+
 Make the repo public only if the manifest and skills carry nothing about the
 user's clients or machines.
 
