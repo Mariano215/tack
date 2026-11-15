@@ -104,6 +104,11 @@ why is the regression test suite so slow|
 remove the stack trace from the log output|
 give me a comprehensive review of the PR|
 the full review agent left comments, summarize them|
+which ui library should we use for the admin app|ui-library
+pick a component library for this react project|ui-library
+set up daisyui on the marketing site|ui-library
+should we use ant design or heroui|ui-library
+fix the library import in the ui folder|
 # Guard rails in the router itself.
 /commit these changes now|
 hi|

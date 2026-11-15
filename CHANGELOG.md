@@ -4,6 +4,10 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## Unreleased
+
+- New core skill `ui-library-picker`: decision rules and checked install commands for shadcn/ui, coss ui, AlignUI, daisyUI, HeroUI and Ant Design, routed by "which UI library" and library names.
+
 ## v0.6.0
 
 - `hooks/bash-guard.sh` (PreToolUse on Bash): denies commands that read secret files (tokens, keys, credentials) and asks before publishing (push, merge, release, `gh api` writes). Six more `Read()` deny rules cover Claude, gh and fal credential files.
