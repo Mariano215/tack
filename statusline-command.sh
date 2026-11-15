@@ -77,6 +77,7 @@ short_cwd="${cwd/#$home/\~}"
 # Active harness profile. With `tack shell` two terminals run two profiles at
 # once, and this is the only thing on screen that tells them apart.
 harness_profile=$(cat "$cfg/.harness-active" 2>/dev/null)
+[ -n "$harness_profile" ] && [ -f "$cfg/.harness-update-pending" ] && harness_profile="${harness_profile} (update waiting: tack sync)"
 
 # Git branch (skip locks, silent on failure)
 branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)

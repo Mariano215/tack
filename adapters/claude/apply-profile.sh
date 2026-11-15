@@ -80,6 +80,26 @@ MANIFEST="${1:-./manifest.json}"
 command -v jq >/dev/null 2>&1 || { echo "apply-profile: jq required" >&2; exit 1; }
 
 CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Shared state (the CLAUDE.md engine block, the marketplace registry, the shell
+# rc block, ~/.local/bin/tack) is one copy per machine, but each profile applies
+# from its own pinned core. Only the newest core seen here may write it, or a
+# lagging pin downgrades what a newer one wrote (the tack downgrade, 2026-11-15).
+CORE_STAMP="$HOME/.claude/.harness-core-rev"  # harness:shared, one record per machine
+SHARED_OK=1
+core_head="$(git -C "$CORE_DIR" rev-parse HEAD 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$core_head" ] && [ -f "$CORE_STAMP" ]; then
+  stamped="$(tr -d '\r\n' < "$CORE_STAMP" 2>/dev/null || true)"
+  if [ -n "$stamped" ] && [ "$stamped" != "$core_head" ] \
+     && ! git -C "$CORE_DIR" merge-base --is-ancestor "$stamped" HEAD 2>/dev/null; then
+    SHARED_OK=0
+    echo "  shared state left as it is: core ${stamped:0:7} wrote it, and this pin (${core_head:0:7}) is not newer."
+    echo "    Fix: tack sync --push (moves every pin forward). To force it: rm $CORE_STAMP, then tack use again."
+  fi
+fi
+if [ "$SHARED_OK" -eq 1 ] && [ -n "$core_head" ]; then
+  { mkdir -p "$HOME/.claude" && printf '%s\n' "$core_head" > "$CORE_STAMP"; } || echo "  core stamp not written ($CORE_STAMP); shared writes stay gated on the old stamp"  # harness:shared
+fi
 # shellcheck source=resolve-link-target.sh
 . "$CORE_DIR/lib/resolve-link-target.sh"
 PROFILE_DIR="$(cd "$(dirname "$MANIFEST")" && pwd)"
@@ -208,17 +228,43 @@ mv "$comp" "$CLAUDE/settings.json"
 # repo as a submodule, so nothing in the config dir can find base-settings.json by
 # path; verify-setup reads this snapshot to spot marketplace drift.
 cp "$CORE_DIR/base-settings.json" "$CLAUDE/.harness-base-settings.json"
+# Which core applied this dir (per dir, unlike the shared stamp); verify-setup
+# compares it with the machine stamp to tell a lagging pin from real drift.
+[ -n "$core_head" ] && printf '%s\n' "$core_head" > "$CLAUDE/.harness-applied-core"
 echo "  settings.json composed"
 
 # 2. engine: copy hooks, ghost, agents, commands, templates, scripts, output
 # styles, top scripts. output-styles rides here because base-settings.json names
 # an outputStyle: a machine that got the name without the file falls back to the
 # default style silently, with nothing in the UI saying why.
-for d in hooks ghost agents commands templates scripts output-styles; do
+for d in hooks ghost templates scripts; do
   [ -d "$CORE_DIR/$d" ] && { rm -rf "$CLAUDE/$d"; cp -R "$CORE_DIR/$d" "$CLAUDE/$d"; }
 done
-# A profile may carry its own commands. The loop above does rm -rf before it
-# copies, so anything a profile installed by hand was wiped on every apply: the
+# agents, commands and output-styles also hold the user's own files (/agents
+# writes personal agents here), and rm -rf deleted them on every apply. Remove
+# only what core or the profile shipped last time, then copy the current set.
+# That restores the engine's own previous state and removes no user file, so it
+# needs no quarantine or undo step. A symlinked agents/commands/output-styles dir
+# is written through to its target, unlike the old rm -rf.
+ENGINE_LIST="$CLAUDE/.harness-managed-engine"
+if [ -f "$ENGINE_LIST" ]; then
+  while IFS= read -r f || [ -n "$f" ]; do
+    f="${f%$'\r'}"
+    case "$f" in agents/*|commands/*|output-styles/*) ;; *) continue ;; esac
+    case "$f" in ../*|*/../*|*/..) continue ;; esac
+    [ -f "$CLAUDE/$f" ] || [ -L "$CLAUDE/$f" ] || continue
+    rm -f "$CLAUDE/$f"
+  done < "$ENGINE_LIST"
+fi
+: > "$ENGINE_LIST.tmp"
+for d in agents commands output-styles; do
+  [ -d "$CORE_DIR/$d" ] || continue
+  mkdir -p "$CLAUDE/$d"
+  cp -R "$CORE_DIR/$d/." "$CLAUDE/$d/"
+  ( cd "$CORE_DIR" && find "$d" -type f ) >> "$ENGINE_LIST.tmp"
+done
+# A profile may carry its own commands. The engine copy used to rm -rf before it
+# copied, so anything a profile installed by hand was wiped on every apply: the
 # audit profile's /audit-init and /report-gen died on the next `tack use` and the
 # auditor skill went on routing to commands that no longer existed. Merge the
 # profile's commands in after core's. A profile that shadows a core command name
@@ -226,8 +272,10 @@ done
 if [ -d "$PROFILE_DIR/commands" ]; then
   mkdir -p "$CLAUDE/commands"
   cp -R "$PROFILE_DIR/commands/." "$CLAUDE/commands/"
+  ( cd "$PROFILE_DIR" && find commands -type f ) >> "$ENGINE_LIST.tmp"
   echo "  profile commands merged"
 fi
+mv "$ENGINE_LIST.tmp" "$ENGINE_LIST"
 for f in verify-setup.sh statusline-command.sh; do
   [ -f "$CORE_DIR/$f" ] && cp "$CORE_DIR/$f" "$CLAUDE/$f"
 done
@@ -239,8 +287,10 @@ chmod +x "$CLAUDE/verify-setup.sh" "$CLAUDE/statusline-command.sh" 2>/dev/null |
 # the live file was kept by hand and drifted from the engine it described.
 # In an isolated config dir CLAUDE.md is a link to the shared file, and writing
 # through the link is intended: every profile renders the same engine block.
+if [ "$SHARED_OK" -eq 1 ]; then
 python3 "$CORE_DIR/lib/render-claude-md.py" "$CORE_DIR/templates/CLAUDE.md" "$CLAUDE/CLAUDE.md" \
   || echo "  CLAUDE.md not rendered (python3 failed), file left as it was"
+fi
 # Refresh the switcher itself. Only setup-core.sh installed tack, so a machine kept
 # running the tack it was first set up with: a fix to tack (like sync re-applying)
 # never arrived through a sync, which is exactly the update it was meant to
@@ -259,6 +309,7 @@ if [ -f "$HOME/.local/bin/tack" ] && git -C "$CORE_DIR" rev-parse --git-dir >/de
 $(git -C "$CORE_DIR" rev-list --full-history HEAD -- bin/tack 2>/dev/null | tr -d '\r')
 EOF
 fi
+[ "$SHARED_OK" -eq 1 ] || tack_known=0
 if [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" && [ "$tack_known" -eq 0 ]; then
   echo "  tack left as it is: ~/.local/bin/tack is not from this core's history (a newer pin, or a hand edit). Fix: tack sync --push; if you edited it, rm ~/.local/bin/tack and re-run tack use"
 elif [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack"; then
@@ -268,7 +319,7 @@ elif [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/
     || { cp "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" && chmod +x "$HOME/.local/bin/tack"; }; } \
     && echo "  tack refreshed"
 fi
-if [ -f "$CORE_DIR/bin/tack.cmd" ] && { [ ! -f "$HOME/.local/bin/tack.cmd" ] || ! cmp -s "$CORE_DIR/bin/tack.cmd" "$HOME/.local/bin/tack.cmd"; }; then
+if [ "$SHARED_OK" -eq 1 ] && [ -f "$CORE_DIR/bin/tack.cmd" ] && { [ ! -f "$HOME/.local/bin/tack.cmd" ] || ! cmp -s "$CORE_DIR/bin/tack.cmd" "$HOME/.local/bin/tack.cmd"; }; then
   mkdir -p "$HOME/.local/bin"
   cp "$CORE_DIR/bin/tack.cmd" "$HOME/.local/bin/tack.cmd" && echo "  tack Windows launcher refreshed"
 fi
@@ -461,7 +512,7 @@ true
 # Keep one anyway by listing it in .harness-marketplaces-keep.
 KNOWN="$CLAUDE/plugins/known_marketplaces.json"
 MKT_KEEP="$CLAUDE/.harness-marketplaces-keep"
-if command -v claude >/dev/null 2>&1 && [ -f "$KNOWN" ]; then
+if [ "$SHARED_OK" -eq 1 ] && command -v claude >/dev/null 2>&1 && [ -f "$KNOWN" ]; then
   wanted="$(jq -r '(.extraKnownMarketplaces // {}) | keys[]' "$CORE_DIR/base-settings.json" 2>/dev/null | tr -d '\r')"
   # tr as at 3a: without it every name reads as "caveman\r", matches nothing in
   # $wanted (captured through $(...), so already CR-free), and the whole registry
@@ -481,12 +532,39 @@ if command -v claude >/dev/null 2>&1 && [ -f "$KNOWN" ]; then
       echo "  marketplace remove failed: $m (remove by hand: claude plugin marketplace remove $m)"
     fi
   done
+  # A marketplace registered before base-settings named a ref follows the wrong
+  # branch. Remove it and let the add below register it with the ref. The
+  # recorded ref comes from the registry file, never from CLI text. The ref must
+  # exist on the remote first: a removed marketplace whose re-add then fails
+  # would leave the machine with no mods at all.
+  # Removing a marketplace uninstalls its plugins, so remember which ones moved.
+  MOVED="$(mktemp "${TMPDIR:-/tmp}/harness-moved.XXXXXX")"
+  jq -r '(.extraKnownMarketplaces // {}) | to_entries[] | select(.value.source.ref)
+         | "\(.key)\t\(.value.source.ref)\t\(if .value.source.repo then "https://github.com/" + .value.source.repo + ".git" else (.value.source.url // "") end)"' \
+    "$CORE_DIR/base-settings.json" 2>/dev/null | tr -d '\r' \
+  | while IFS="$(printf '\t')" read -r m ref url; do
+    [ -n "$m" ] && [ -n "$url" ] || continue
+    # "none" marks a marketplace that is not registered at all: nothing to move.
+    have="$(jq -r --arg m "$m" 'if has($m) then (.[$m].source.ref // "") else "none" end' "$KNOWN" 2>/dev/null | tr -d '\r')"
+    [ "$have" != none ] && [ "$have" != "$ref" ] || continue
+    if ! git ls-remote --exit-code "$url" "refs/heads/$ref" >/dev/null 2>&1; then
+      echo "  marketplace $m: ref $ref not on the remote yet, left on its current ref. Fix: create it (git push origin <sha>:refs/heads/$ref), then re-apply."
+      continue
+    fi
+    old="$(jq -r --arg m "$m" '.[$m].source | (.repo // .url // "") + (if .ref then "#" + .ref else "" end)' "$KNOWN" 2>/dev/null | tr -d '\r')"
+    echo "  marketplace $m: removing to re-add at ref $ref (undo: claude plugin marketplace add $old; plugins from it are reinstalled automatically)"
+    if claude plugin marketplace remove "$m" >/dev/null 2>&1; then
+      printf '%s\n' "$m" >> "$MOVED"
+    else
+      echo "  marketplace remove failed: $m (remove by hand: claude plugin marketplace remove $m)"
+    fi
+  done
   # The other half: register what base-settings names and this machine lacks.
   # Pruning alone left machines asymmetric, the container had no openai-codex
   # marketplace, so the enabled codex plugin was inert there and nowhere else.
-  live="$(jq -r 'keys[]' "$KNOWN" 2>/dev/null)"
+  live="$(jq -r 'keys[]' "$KNOWN" 2>/dev/null | tr -d '\r')"
   jq -r '(.extraKnownMarketplaces // {}) | to_entries[]
-         | "\(.key)\t\(.value.source.repo // .value.source.url // "")"' \
+         | "\(.key)\t\(.value.source.repo // .value.source.url // "")\(if .value.source.ref then "#" + .value.source.ref else "" end)"' \
     "$CORE_DIR/base-settings.json" 2>/dev/null \
   | tr -d '\r' \
   | while IFS="$(printf '\t')" read -r m src; do
@@ -496,6 +574,24 @@ if command -v claude >/dev/null 2>&1 && [ -f "$KNOWN" ]; then
       && echo "  marketplace added (named by base-settings): $m" \
       || echo "  marketplace add failed: $m from $src"
   done
+  # Reinstall what the remove uninstalled: plugins base-settings enables from a moved marketplace.
+  while IFS= read -r m; do
+    [ -n "$m" ] || continue
+    if ! jq -e --arg m "$m" 'has($m)' "$KNOWN" >/dev/null 2>&1; then
+      echo "  marketplace $m is not registered after the add. Fix: claude plugin marketplace add <src>, then claude plugin install <key>"
+      continue
+    fi
+    jq -r --arg s "@$m" '(.enabledPlugins // {}) | to_entries[] | select(.value == true and (.key | endswith($s))) | .key' \
+      "$CORE_DIR/base-settings.json" 2>/dev/null | tr -d '\r' \
+    | while IFS= read -r key; do
+      [ -n "$key" ] || continue
+      claude plugin install "$key" >/dev/null 2>&1 \
+        && echo "  plugin reinstalled after ref move: $key" \
+        || echo "  plugin reinstall failed: $key (Fix: claude plugin install $key)"
+    done
+  done < "$MOVED"
+  rm -f "$MOVED"
+  # end 3c
 fi
 
 # 4. MCP reconciliation. Browser MCPs ride enabledPlugins above. The servers
@@ -557,7 +653,7 @@ bash "$CORE_DIR/lib/claude-mem-setup.sh" || true
 # 4c. shell rc: refresh the alias block and strip legacy headroom lines. This
 # only ran from setup-core.sh (once per machine), so an rc file that predates a
 # change kept its stale content through every `tack sync`.
-bash "$CORE_DIR/lib/setup-shell-aliases.sh" || true
+[ "$SHARED_OK" -eq 1 ] && { bash "$CORE_DIR/lib/setup-shell-aliases.sh" || true; }
 
 # 5. record active + verify
 echo "$NAME" > "$CLAUDE/.harness-active"

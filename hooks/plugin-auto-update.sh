@@ -1,6 +1,6 @@
 #!/bin/bash
-# Daily self-maintenance: pull the active profile repo (+ core submodule), re-apply
-# on change, drift-check and heal, update plugins + graphifyy.
+# Daily self-maintenance: fetch the active profile repo (+ core) and report waiting
+# commits, drift-check and heal, update plugins + graphifyy. Never applies new code.
 # Runs async from SessionStart. Safe to kill mid-run (no destructive ops).
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -88,24 +88,26 @@ PROFILE_DIR="$HARNESS_ROOT/tack-$ACTIVE"
 
 reapply() { command -v tack >/dev/null 2>&1 && tack use "$ACTIVE" >/dev/null 2>&1 || true; }
 
-# 1. Pull the active profile repo and its core submodule; re-apply if anything
-#    landed. Compare commits rather than grepping git's English stdout for
-#    "Updating|Fast-forward|Submodule path": under any other locale, or after a
-#    wording change upstream, that grep matches nothing and the only closed loop
-#    in the harness stops re-applying. tack sync already uses rev-parse this way.
+# 1. Report, never apply. Pulling and re-applying here ran whatever was last
+#    pushed on every machine with no human step, so one bad push or leaked
+#    token reached them all within a day. Fetch, count what is waiting, and
+#    leave the apply to `tack sync`. The statusline shows the marker.
+PENDING="$CLAUDE_DIR/.harness-update-pending"
 if [ -n "$ACTIVE" ] && [ -d "$PROFILE_DIR/.git" ]; then
-    before_repo=$(git -C "$PROFILE_DIR" rev-parse HEAD 2>/dev/null)
-    before_core=$(git -C "$PROFILE_DIR/core" rev-parse HEAD 2>/dev/null)
-    git -C "$PROFILE_DIR" pull --ff-only >/dev/null 2>&1
-    # No --remote: install.sh snaps core back to the pin, so pulling core past
-    # it here was thrown away by the re-apply and left the repo dirty. Core
-    # moves only through a pin bump, which tack sync commits and pushes; this
-    # step picks up bumps pushed from other machines.
-    git -C "$PROFILE_DIR" submodule update --init >/dev/null 2>&1
-    after_repo=$(git -C "$PROFILE_DIR" rev-parse HEAD 2>/dev/null)
-    after_core=$(git -C "$PROFILE_DIR/core" rev-parse HEAD 2>/dev/null)
-    if [ "$before_repo" != "$after_repo" ] || [ "$before_core" != "$after_core" ]; then
-        reapply
+    ssh_cmd="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes}"
+    waiting=""
+    if GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh_cmd" git -C "$PROFILE_DIR" fetch -q </dev/null >/dev/null 2>&1; then
+        waiting=$(git -C "$PROFILE_DIR" rev-list --count 'HEAD..@{u}' 2>/dev/null | tr -d '\r')
+        if [ -d "$PROFILE_DIR/core/.git" ] || [ -f "$PROFILE_DIR/core/.git" ]; then
+            if GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh_cmd" git -C "$PROFILE_DIR/core" fetch -q origin main </dev/null >/dev/null 2>&1; then
+                c=$(git -C "$PROFILE_DIR/core" rev-list --count HEAD..FETCH_HEAD 2>/dev/null | tr -d '\r')
+                waiting=$(( ${waiting:-0} + ${c:-0} ))
+            fi
+        fi
+    fi
+    # A failed fetch leaves waiting empty and the marker as it was.
+    if [ -n "$waiting" ]; then
+        if [ "$waiting" -gt 0 ] 2>/dev/null; then echo "$waiting" > "$PENDING"; else rm -f "$PENDING"; fi
     fi
 fi
 

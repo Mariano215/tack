@@ -135,7 +135,15 @@ if command -v jq >/dev/null 2>&1 && [ -f "$KNOWN" ] && [ -f "$CORE_BASE" ]; then
     [ -f "$keep" ] && grep -qxF "$m" "$keep" 2>/dev/null && continue
     stale="$stale $m"
   done < <(jq -r 'keys[]' "$KNOWN" 2>/dev/null | tr -d '\r')
-  [ -z "$stale" ] && ok "no stale marketplaces" || err "stale marketplace(s):$stale (re-apply the profile to prune)"
+  applied="$(tr -d '\r\n' < "$CLAUDE/.harness-applied-core" 2>/dev/null || true)"
+  stamp="$(tr -d '\r\n' < "$HOME/.claude/.harness-core-rev" 2>/dev/null || true)"  # harness:shared
+  if [ -z "$stale" ]; then
+    ok "no stale marketplaces"
+  elif [ -n "$applied" ] && [ -n "$stamp" ] && [ "$applied" != "$stamp" ]; then
+    warn "stale marketplace(s):$stale. Drift comes from a newer core on this machine. Fix: tack sync --push"
+  else
+    err "stale marketplace(s):$stale (re-apply the profile to prune)"
+  fi
 fi
 
 # memory: claude-mem enabled but never installed stores nothing

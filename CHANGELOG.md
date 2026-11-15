@@ -4,7 +4,12 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
-## Unreleased
+## v0.6.0
+
+- `hooks/bash-guard.sh` (PreToolUse on Bash): denies commands that read secret files (tokens, keys, credentials) and asks before publishing (push, merge, release, `gh api` writes). Six more `Read()` deny rules cover Claude, gh and fal credential files.
+- The daily hook reports instead of applying. It fetches, marks `.harness-update-pending`, and the statusline shows `update waiting: tack sync`. Only `tack sync` applies and clears it.
+- Only the newest core writes shared state (`CLAUDE.md`, the `tack` binary, shell aliases). An apply through an older pin leaves them and prints the fix. `verify-setup.sh` warns, not fails, when two profiles' cores differ.
+- Apply keeps your own files in `agents/`, `commands/` and `output-styles/`. It removes only what the engine shipped last time (`.harness-managed-engine`).
 
 - ghost decodes hook input as UTF-8. On Windows the cp1252 locale let em-dashes through.
 - The plugin auto-update hook takes a machine-wide lock, so sessions that start together no longer race installs and plugin sweeps.

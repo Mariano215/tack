@@ -320,6 +320,67 @@ out="$(apply "$CFG")"
 grep -q 'newer than this core' "$TKBIN" && ok "newer tack left alone" || bad "newer tack was overwritten by an older core"
 echo "$out" | grep -q 'tack left as it is' || bad "skipped tack refresh printed no fix"
 
+echo "== shared state: an older pin never overwrites a newer core's =="
+STAMP="$HOME/.claude/.harness-core-rev"; mkdir -p "$HOME/.claude"
+CFG="$TMP/stampcfg"; mkdir -p "$CFG"; printf 'sentinel\n' > "$CFG/CLAUDE.md"
+printf 'ffffffffffffffffffffffffffffffffffffffff\n' > "$STAMP"
+out="$(apply "$CFG")"
+[ "$(cat "$CFG/CLAUDE.md")" = "sentinel" ] && ok "unknown newer stamp: CLAUDE.md left alone" || bad "an older core rewrote the shared CLAUDE.md"
+echo "$out" | grep -q 'shared state left as it is' || bad "skipped shared writes printed no fix"
+grep -q '^f\{40\}$' "$STAMP" || bad "older core overwrote the stamp"
+prev="$(git -C "$CORE" rev-parse HEAD~1 2>/dev/null | tr -d '\r')"
+if [ -n "$prev" ]; then
+  printf '%s\n' "$prev" > "$STAMP"
+  apply "$CFG" >/dev/null
+  grep -q 'harness:begin' "$CFG/CLAUDE.md" && ok "older stamp: CLAUDE.md rendered" || bad "newer core did not render CLAUDE.md"
+  [ "$(cat "$STAMP")" = "$(git -C "$CORE" rev-parse HEAD | tr -d '\r')" ] || bad "stamp not moved to this core"
+fi
+rm -f "$STAMP"
+
+echo "== engine dirs keep user files =="
+CFG="$TMP/enginecfg"; mkdir -p "$CFG"
+apply "$CFG" >/dev/null
+mkdir -p "$CFG/agents"; printf 'mine\n' > "$CFG/agents/my-agent.md"
+printf 'old\n' > "$CFG/agents/retired.md"; echo "agents/retired.md" >> "$CFG/.harness-managed-engine"
+mkdir -p "$CFG/agents/sub"; printf 'keep\n' > "$CFG/settings.json.keep"
+printf 'agents/\nagents/sub\nagents/../settings.json.keep\nagents/foo..md\n' >> "$CFG/.harness-managed-engine"
+printf 'x\n' > "$CFG/agents/foo..md"
+apply "$CFG" >/dev/null && ok "apply survives directory and traversal list lines" || bad "apply aborted on a directory list line"
+[ -d "$CFG/agents/sub" ] && ok "listed directory remains" || bad "listed directory was removed"
+[ -f "$CFG/settings.json.keep" ] && ok "traversal line deleted nothing" || bad "traversal line deleted a file outside agents"
+[ -f "$CFG/agents/foo..md" ] && bad "foo..md was not pruned" || ok "foo..md pruned normally"
+[ -f "$CFG/agents/my-agent.md" ] && ok "user agent survives apply" || bad "apply deleted a user agent"
+[ -f "$CFG/agents/retired.md" ] && bad "a file core no longer ships was kept" || ok "retired core file removed"
+[ -f "$CFG/agents/code-reviewer.md" ] || bad "core agent missing after apply"
+mkdir -p "$PROF/commands"; printf 'cmd\n' > "$PROF/commands/x.md"
+mk_manifest '.'
+CFGP="$TMP/profcmd"; mkdir -p "$CFGP"
+apply_prof "$CFGP" >/dev/null
+[ -f "$CFGP/commands/x.md" ] && grep -qx 'commands/x.md' "$CFGP/.harness-managed-engine" \
+  && ok "profile command lands and is listed" || bad "profile command missing or unlisted"
+rm -rf "$PROF/commands"
+
+echo "== 7. core stamp: unwritable stamp does not abort; stale-marketplace message names the fix =="
+CFGS="$TMP/stamp"; mkdir -p "$CFGS"
+rm -f "$HOME/.claude/.harness-core-rev"; mkdir -p "$HOME/.claude/.harness-core-rev"
+out="$(apply "$CFGS")"; rc=$?
+[ "$rc" -eq 0 ] && ok "apply survives an unwritable stamp" || { echo "$out"; bad "apply exited $rc with unwritable stamp"; }
+rmdir "$HOME/.claude/.harness-core-rev" 2>/dev/null
+apply "$CFGS" >/dev/null
+mkdir -p "$CFGS/plugins"; echo '{"ghost-mkt":{}}' > "$CFGS/plugins/known_marketplaces.json"
+printf 'aaaaaaa\n' > "$CFGS/.harness-applied-core"; printf 'bbbbbbb\n' > "$HOME/.claude/.harness-core-rev"
+vout="$(CLAUDE_CONFIG_DIR="$CFGS" bash "$CORE/verify-setup.sh" 2>&1 </dev/null)"
+case "$vout" in
+  *"stale marketplace"*"tack sync --push"*) ok "differing core stamps warn with tack sync --push" ;;
+  *) bad "stale marketplace under differing stamps did not name tack sync --push" ;;
+esac
+printf 'bbbbbbb\n' > "$CFGS/.harness-applied-core"
+vout="$(CLAUDE_CONFIG_DIR="$CFGS" bash "$CORE/verify-setup.sh" 2>&1 </dev/null)"
+case "$vout" in
+  *"re-apply the profile to prune"*) ok "matching stamps keep the hard error" ;;
+  *) bad "matching stamps lost the re-apply error" ;;
+esac
+
 echo ""
 if [ "$fails" -ne 0 ]; then
   echo "test-apply FAILED ($fails)."

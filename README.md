@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.5.1-3B7A57"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.6.0-3B7A57"></a>
 </p>
 
 <p align="center">
@@ -348,6 +348,10 @@ that a sync cannot carry, rather than reporting success and leaving them behind.
 | `tack sync [--push]` | Pull every profile, advance its engine pin, re-apply the active one |
 | `tack status` | Active profile per agent, isolated config dirs, MCP servers, plugin count |
 | `tack tune` | Mine last week's sessions and open a draft PR of cited harness edits (see below) |
+
+A SessionStart hook (`hooks/plugin-auto-update.sh`) fetches once every 24h and
+reports waiting commits on the statusline. It never pulls or re-applies; run
+`tack sync` to apply them.
 
 ## Weekly self-tuning (`tack tune`)
 `tack tune` follows the method of google-research/harness2, without its replay

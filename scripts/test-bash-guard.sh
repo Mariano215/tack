@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Covers hooks/bash-guard.sh: secret reads are denied in every mode, publishing
+# commands ask, ordinary commands pass silently, junk input exits 0.
+set -uo pipefail
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOOK="$REPO_ROOT/hooks/bash-guard.sh"
+failed=0
+fail() { echo "test-bash-guard: $1"; failed=1; }
+decision() {
+  jq -cn --arg c "$1" '{tool_name:"Bash",tool_input:{command:$c}}' | bash "$HOOK" \
+    | jq -r '.hookSpecificOutput.permissionDecision // "none"' 2>/dev/null | tr -d '\r'
+}
+check() { local got; got="$(decision "$2")"; [ "${got:-none}" = "$1" ] || fail "want $1, got ${got:-none}: $2"; }
+
+check deny 'cat ~/.aws/credentials'
+check deny 'cat ~/.ssh/id_ed25519'
+check deny 'source .env'
+check deny 'cat app/.env.production'
+check deny 'jq . ~/.claude.json'
+check deny 'cat ~/.claude-profiles/audit@x/.credentials.json'
+check deny 'cat ~/.claude-mem/settings.json'
+check deny 'cat ~/.claude/.fal-key'
+check deny 'security find-generic-password -s x -w'
+check deny 'cat ~/.config/gh/hosts.yml'
+check none 'cp .env.example .env.sample'
+check none 'direnv allow .envrc'
+check none 'ls -la'
+check none 'git status'
+check ask  'git push origin main'
+check ask  'git add . && git commit -m x && git push'
+check ask  'git -C ../tack push -q origin main'
+check ask  'gh pr merge 12 --squash'
+check ask  'gh release create v1.0.0'
+check ask  'tack sync --push'
+check ask  "bash -c 'git push'"
+check ask  'git "push"'
+check ask  'bash -c "git push"'
+check ask  'sh -c "gh pr merge 1"'
+check ask  "GIT_CONFIG_PARAMETERS=\"'alias.p=push'\" git p"
+check ask  'gh repo create o/r --private --source=. --push'
+check none 'gh repo view o/r'
+check none 'git commit -m "fix"'
+check none 'gh pr view 12'
+check none 'git pushd'
+check deny 'cat .env.production.local'
+check deny 'cat .env.qa'
+check none 'cp .env.template .env.sample'
+check ask  'git -c user.name=x push'
+check ask  '/usr/bin/git push'
+check ask  'command git push origin main'
+check ask  'env FOO=1 git push'
+check ask  '\git push'
+check ask  'git --git-dir=x --work-tree=y push'
+check ask  'git send-pack origin'
+check ask  'gh api -X POST repos/o/r/releases'
+check ask  'gh api repos/o/r --method DELETE'
+check none 'gh api repos/o/r'
+check ask  "cat ~/.a''ws/credentials"
+check ask  'cat ~/.aw?/credentials'
+check ask  'eval "$(echo Y2F0 | base64 -d)" ~/.ssh'
+check none 'grep -r credentials src/*.js'
+check deny 'cat ~/.AWS/credentials'
+check deny 'cat ~/.SSH/id_rsa'
+check deny 'cat .ENV'
+check none 'cat .ENV.EXAMPLE'
+check deny 'cat .env.example.local'
+check ask  'gh api repos/o/r/issues -f title=x'
+check ask  'gh api graphql -F query=@q.graphql'
+check ask  'gh api repos/o/r --input body.json'
+check none 'gh api -X GET repos/o/r'
+check ask  'git --git-dir x push'
+check ask  'git -c alias.p=push p'
+check none 'git log --oneline'
+check ask  'git -C "a;b" push'
+check ask  '$(git push)'
+check ask  '(git push)'
+check ask  'echo `git push`'
+check ask  "git -c alias.x='!git push' x"
+check ask  'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.p GIT_CONFIG_VALUE_0=push git p'
+# deny wins over ask
+check deny 'cat .env && git push'
+
+printf '' | bash "$HOOK" >/dev/null 2>&1 || fail "empty stdin should exit 0"
+printf 'not json' | bash "$HOOK" >/dev/null 2>&1 || fail "malformed stdin should exit 0"
+[ -z "$(printf 'not json' | bash "$HOOK")" ] || fail "malformed stdin printed output"
+
+# Strict engine: every pattern must compile under GNU grep or ugrep (exit 2 = invalid).
+strict=""; for g in ggrep ugrep; do command -v "$g" >/dev/null 2>&1 && { strict="$g"; break; }; done
+# Plain grep is GNU grep on Linux CI, so exit 2 there is caught even with no strict engine.
+engines="grep"; [ -n "$strict" ] && engines="grep $strict"
+if true; then
+  for v in SECRET PUBLISH GITPUSH GITALIAS GHAPI OBF; do
+    pat="$(bash -c ". <(sed -n '/^ENV_OK=/,/^OBF=/p' \"$HOOK\"); printf '%s' \"\${$v}\"")"
+    for e in $engines; do
+      printf x | "$e" -E "$pat" >/dev/null 2>&1; [ $? -ne 2 ] || fail "$v does not compile under $e"
+    done
+  done
+fi
+
+[ "$failed" = 0 ] && echo "test-bash-guard: ok"
+exit "$failed"

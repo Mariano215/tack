@@ -23,7 +23,13 @@
       "Read(**/id_ed25519*)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
-      "Read(~/.claude/.credentials.json)"
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.claude.json)",
+      "Read(~/.claude-profiles/**/.claude.json)",
+      "Read(~/.claude-profiles/**/.credentials.json)",
+      "Read(~/.claude-mem/settings.json)",
+      "Read(~/.claude/.fal-key)",
+      "Read(~/.config/gh/hosts.yml)"
     ]
   },
   "enableAllProjectMcpServers": false,
@@ -77,6 +83,17 @@
             "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/model-router-nudge.sh\" ]; then bash \"$c/hooks/model-router-nudge.sh\"; fi",
             "timeout": 5,
             "statusMessage": "Checking model/effort tier..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/bash-guard.sh\" ]; then bash \"$c/hooks/bash-guard.sh\"; fi",
+            "timeout": 5,
+            "statusMessage": "Checking command..."
           }
         ]
       }

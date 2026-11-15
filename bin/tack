@@ -849,6 +849,8 @@ cmd_sync() {
   if [ -n "$active" ]; then
     echo "== re-applying active profile: $active =="
     cmd_use "$active" || return $?
+    # Only a sync clears it: the heal in the daily hook also applies, and must not hide waiting commits.
+    rm -f "$CLAUDE_DIR/.harness-update-pending"
   else
     echo "synced. No active profile recorded; run: tack use <name>"
   fi
