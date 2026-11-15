@@ -41,9 +41,10 @@ decide() {
 #     allowed), and nothing is piped onward (no "|" after <<);
 #   - the delimiter is a quoted bare word ('EOF' or "EOF"), so nothing expands;
 #   - the exact terminator line is found before the input ends.
-#   - nothing outside the body can run it: no $(, backtick, <(, eval, line
-#     continuation, or shell or interpreter word anywhere else in the command
-#     (that catches eval "$( on the line before, "\ | sh" and "bash written.sh").
+#   - every other segment of the command is on a short allowlist (cd, a plain
+#     date '+...' >> file, git add/status/log/diff); anything else, a pipe
+#     included, means the whole command is checked. That catches eval "$( on
+#     the line before, "\ | sh", and running the file the heredoc wrote.
 # Everything else (bash <<, python - <<, cat <<EOF | sh, odd quoting) keeps its
 # body, so this can only remove false asks, never hide a command that runs.
 orig_cmd="$cmd"
@@ -68,15 +69,22 @@ cmd=$(printf '%s\n' "$cmd" | awk '
     } else if (head ~ /^([^ \t;&|]*\/)?(cat|tee)([ \t]|$)/) {
       # cat or tee only when the target is a notes file: .md, .txt or .log,
       # never under .git/ (hooks run from there) and never a shell rc file.
-      w = head " " rest; ok = 0
-      if (match(w, />>?[ \t]*[^ \t;&|<>]+/)) { tgt = substr(w, RSTART, RLENGTH); sub(/^>>?[ \t]*/, "", tgt) }
-      else if (match(head, /tee([ \t]+-[a-z]+)*[ \t]+[^ \t;&|<>]+/)) { tgt = substr(head, RSTART, RLENGTH); sub(/.*[ \t]/, "", tgt) }
-      else tgt = ""
-      gsub(/["\047]/, "", tgt)
-      if (tgt ~ /\.(md|markdown|txt|log)$/ && tgt !~ /(^|\/)\.git\// && tgt !~ /(^|\/)\.[a-z]*(rc|profile)$/) ok = 1
+      # Exactly one plain stdout redirect (no 2> or &>) for cat, none for tee.
+      w = head " " rest; ok = 0; tgt = ""
+      cp = w; nred = gsub(/>>?/, "", cp)
+      if (w ~ /[0-9&]>/) nred = 99
+      if (head ~ /^([^ \t;&|]*\/)?cat([ \t]|$)/ && nred == 1) {
+        if (match(w, />>?[ \t]*[^ \t;&|<>]+/)) { tgt = substr(w, RSTART, RLENGTH); sub(/^>>?[ \t]*/, "", tgt) }
+      } else if (nred == 0) {
+        targs = head; sub(/^([^ \t;&|]*\/)?tee/, "", targs); gsub(/[ \t]+-[a-z]+/, "", targs)
+        if (split(targs, ta, /[ \t]+/) >= 1) { n = 0; for (k in ta) if (ta[k] != "") { n++; tgt = ta[k] } if (n != 1) tgt = "" }
+      }
+      gsub(/["\047]/, "", tgt); ltgt = tolower(tgt)
+      if (ltgt ~ /\.(md|markdown|txt|log)$/ && ltgt !~ /(^|\/)\.git\// && ltgt !~ /(^|\/)\.[a-z]*(rc|profile)$/) ok = 1
     } else ok = 0
     if (!ok) next
     if (index(rest, "|") > 0) next
+    if ($0 ~ /[$`]/) next
     strip_tabs = (substr(rest, 1, 1) == "-"); if (strip_tabs) rest = substr(rest, 2)
     sub(/^[ \t]*/, "", rest)
     # Only a quoted delimiter makes the body literal text. An unquoted body
@@ -93,9 +101,13 @@ cmd=$(printf '%s\n' "$cmd" | awk '
   }
   END { if (inhd) printf "%s", orig; else printf "%s", out }') || exit 0
 if [ "$cmd" != "$orig_cmd" ]; then
-  RUNNER='\$\(|`|<\(|\\$|(^|[^a-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|eval|source|exec|env|sudo|doas|xargs|nohup|time|watch|ssh|python[0-9.]*|node|deno|bun|perl|ruby|php|osascript|awk|sed|chmod|make|install)([^a-z0-9_.-]|$)|(^|[;&|[:space:]])\.[[:space:]]|(^|[;&|[:space:]])\./'
-  # A grep error (exit 2) also keeps the original: fail toward checking more.
-  printf '%s\n' "$cmd" | tr '[:upper:]' '[:lower:]' | grep -Eq "$RUNNER"; rr=$?
+  # Allowlist, not a denylist of runners: every segment left outside the body
+  # must be one of these, or the original command is checked in full.
+  SEG_OK='^[[:space:]]*$|^[[:space:]]*cd[[:space:]]+[^[:space:]$`\\]+[[:space:]]*$|^[[:space:]]*date[[:space:]]+'"'"'\+[^'"'"'$`]*'"'"'[[:space:]]*>>?[[:space:]]*[^[:space:]$`\\]+[[:space:]]*$|^[[:space:]]*git[[:space:]]+(add|status|log|diff)([[:space:]][^$`\\<>]*)?$|^[[:space:]]*(([^[:space:]]*/)?(cat|tee)|git[[:space:]]+(commit|tag))[[:space:]][^$`\\]*<<-?[[:space:]]*['"'"'"][a-z_][a-z0-9_]*['"'"'"][^$`\\]*$'
+  segs_out=$(printf '%s\n' "$cmd" | tr '[:upper:]' '[:lower:]' | sed -E 's/&&|\|\||;|\|/\
+/g')
+  # grep -v prints the segments that are not allowed; exit 1 means none.
+  printf '%s\n' "$segs_out" | grep -Ev "$SEG_OK" >/dev/null; rr=$?
   [ "$rr" -eq 1 ] || cmd="$orig_cmd"
 fi
 [ -n "$cmd" ] || exit 0

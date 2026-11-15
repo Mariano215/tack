@@ -103,6 +103,15 @@ check ask  "$(printf "cat >> ~/.zshrc <<'EOF'\ngit push\nEOF")"
 check ask  "$(printf "cat > run <<'EOF'\ngit push\nEOF")"
 check none "$(printf "tee -a notes.txt <<'EOF'\nthen git push\nEOF")"
 check none "$(printf "cat <<'EOF' > docs/plan.md\nstep: git push\nEOF")"
+# Target parsing: one plain redirect, case-insensitive .git, no $ on the line.
+check ask  "$(printf "cat > notes.md 2> run.sh <<'EOF'\ngit push\nEOF")"
+check ask  "$(printf "cat > .GIT/hooks/x.md <<'EOF'\ngit push\nEOF")"
+check ask  "$(printf "tee a.md run.sh <<'EOF'\ngit push\nEOF")"
+check ask  "$(printf "cat > \"\$(echo a)\".md <<'EOF'\ngit push\nEOF")"
+# Anything outside the body that is not on the allowlist keeps it checked.
+check ask  "$(printf "cat > a.md <<'EOF'\ngit push\nEOF\ngawk -f a.md")"
+check ask  "$(printf "cat > a.md <<'EOF'\ngit push\nEOF\nnpx tsx a.md")"
+check none "$(printf "git add x.md && git commit -q -F - <<'EOF'\nnote: git push next\nEOF\ngit log --oneline -1")"
 # A quoted body is still checked when something outside it can run it.
 check deny "$(printf "x=1; eval \"\$(\ncat <<'EOF'\ncat ~/.aws/credentials\nEOF\n)\"")"
 check ask  "$(printf "cat <<'EOF' \\\\\n| sh\ngit push\nEOF")"
