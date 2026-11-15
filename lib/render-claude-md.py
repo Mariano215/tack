@@ -4,6 +4,8 @@
 # the markers is the user's and is kept. Backs up the old file as .harness-prev.
 import os, shutil, sys
 tpl, live = sys.argv[1], sys.argv[2]
+# Resolve the profile-dir link, so the backup sits next to the shared file it copies.
+live = os.path.realpath(live)
 B, E = "<!-- harness:begin", "<!-- harness:end -->"
 block = (B + " managed by tack from templates/CLAUDE.md, edit it there -->\n"
          + open(tpl, encoding="utf-8", newline="").read().strip("\n") + "\n" + E + "\n")

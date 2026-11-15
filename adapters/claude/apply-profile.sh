@@ -251,15 +251,16 @@ python3 "$CORE_DIR/lib/render-claude-md.py" "$CORE_DIR/templates/CLAUDE.md" "$CL
 tack_known=1
 if [ -f "$HOME/.local/bin/tack" ] && git -C "$CORE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   tack_known=0
-  tack_installed="$(git hash-object "$HOME/.local/bin/tack" | tr -d '\r')"
+  tack_installed="$(git hash-object "$HOME/.local/bin/tack" 2>/dev/null | tr -d '\r' || true)"
+  [ -n "$tack_installed" ] || tack_known=1
   while read -r c; do
     [ "$(git -C "$CORE_DIR" rev-parse "$c:bin/tack" 2>/dev/null | tr -d '\r')" = "$tack_installed" ] && { tack_known=1; break; }
   done <<EOF
-$(git -C "$CORE_DIR" rev-list HEAD -- bin/tack | tr -d '\r')
+$(git -C "$CORE_DIR" rev-list --full-history HEAD -- bin/tack 2>/dev/null | tr -d '\r')
 EOF
 fi
 if [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" && [ "$tack_known" -eq 0 ]; then
-  echo "  tack left as it is: ~/.local/bin/tack is newer than this core's pin. Fix: tack sync --push"
+  echo "  tack left as it is: ~/.local/bin/tack is not from this core's history (a newer pin, or a hand edit). Fix: tack sync --push; if you edited it, rm ~/.local/bin/tack and re-run tack use"
 elif [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack"; then
   mkdir -p "$HOME/.local/bin"
   # install(1) is missing in some minimal images and Git Bash setups

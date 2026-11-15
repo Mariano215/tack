@@ -65,6 +65,15 @@ now=$(date +%s)
 # broken and gated shut for a full 24h. That window is where "I have to run
 # repair again" and the login failures come from. The guard below is a stat per
 # marketplace when nothing is wrong, so it is cheap enough to pay every time.
+# One run per machine at a time. Sessions that start together (tack tmux panes,
+# a tmux restore after reboot) each saw a stale stamp and raced npm installs and
+# plugin sweeps over the same tree. mkdir is atomic; a lock older than 30 min is
+# from a killed run and is cleared.
+LOCK="$HOME/.claude/.plugin-update.lock"  # harness:shared, one plugins tree per machine
+find "$LOCK" -maxdepth 0 -mmin +30 -exec rmdir {} \; 2>/dev/null
+mkdir "$LOCK" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
 restore_marketplace_deps
 
 stale "$STAMP" || exit 0
@@ -148,4 +157,6 @@ else
 fi
 # --platform: a plain install refreshes only the platform graphify detects, which
 # left the Claude skill 60 versions behind the package.
-graphify install --platform claude >/dev/null 2>&1 || true
+# Run against the shared config dir. In a profile, CLAUDE_CONFIG_DIR/CLAUDE.md is
+# a link to the shared file, so graphify wrote that profile's skill path into it.
+( unset CLAUDE_CONFIG_DIR; graphify install --platform claude >/dev/null 2>&1 ) || true  # harness:shared

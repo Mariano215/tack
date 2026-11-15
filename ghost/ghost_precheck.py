@@ -29,7 +29,8 @@ def _text_for_tool(tool, ti):
 
 def main():
     try:
-        data = json.load(sys.stdin)
+        # Explicit UTF-8: on Windows the locale is cp1252 and an em-dash decodes wrong.
+        data = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     except Exception:
         return 0
     tool = data.get("tool_name", "")
@@ -69,9 +70,13 @@ def main():
         "the list of client-facing document formats. Internal notes belong in .md, "
         "which ghost does not check."
     )
-    print(msg, file=sys.stderr)
+    sys.stderr.buffer.write(msg.encode("utf-8", "replace") + b"\n")
     return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        rc = main()
+    except Exception:
+        rc = 0  # fail open: a malformed payload must never break a write
+    sys.exit(rc)

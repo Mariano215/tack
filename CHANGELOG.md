@@ -6,6 +6,13 @@ existing profile needs.
 
 ## Unreleased
 
+- ghost decodes hook input as UTF-8. On Windows the cp1252 locale let em-dashes through.
+- The plugin auto-update hook takes a machine-wide lock, so sessions that start together no longer race installs and plugin sweeps.
+- Profile config dirs are 0700 and their `.claude.json` copies 0600 (they were 0644 and carry every project's MCP env).
+- `tack tmux` clears `CLAUDE_CONFIG_DIR` for the pane and handles `.` and `:` in names; `tack open` matches its session name exactly.
+- The plugin auto-update hook runs `graphify install` against the shared
+  config dir. In a profile it wrote that profile's skill path into the shared
+  `CLAUDE.md`, because the profile's `CLAUDE.md` is a link to it.
 - An apply through an older core pin no longer downgrades `~/.local/bin/tack`.
   It refreshes only a `tack` that the pinned core's history contains, and
   otherwise prints `tack left as it is` with the fix (`tack sync --push`).

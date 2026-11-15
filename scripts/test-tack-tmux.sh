@@ -29,7 +29,7 @@ check() { if [ "$2" = "$3" ]; then echo "ok: $1"; else echo "FAIL: $1: got '$2',
 for _ in 1 2 3; do bash "$CORE/bin/tack" tmux audit; done
 bash "$CORE/bin/tack" tmux audit --login work
 check "three runs give three sessions" "$(cut -d'|' -f1 "$TMUX_LOG" | head -3 | tr '\n' ' ')" "audit audit-2 audit-3 "
-check "login session and command" "$(sed -n 4p "$TMUX_LOG")" "audit-work|tack shell audit --login work"
+check "login session and command" "$(sed -n 4p "$TMUX_LOG")" "audit-work|env -u CLAUDE_CONFIG_DIR -u CLAUDE_SECURESTORAGE_CONFIG_DIR tack shell audit --login work"
 
 bash "$CORE/bin/tack" tmux audit --login 'a;b' 2>/dev/null; check "bad tag refused" "$?" "2"
 bash "$CORE/bin/tack" tmux audit extra 2>/dev/null; check "stray arg refused" "$?" "2"

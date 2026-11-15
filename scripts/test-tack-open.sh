@@ -64,6 +64,7 @@ case "$(tail -n1 "$TACK_OPEN_TMUX_LOG" | cut -f1)" in
       [ "$1" = "-t" ] && { shift; session="${1:-}"; break; }
       shift
     done
+    session="${session#=}"  # "=" asks tmux for an exact match
     [ -f "$TACK_OPEN_TMUX_STATE/$session" ]
     ;;
   new-session)

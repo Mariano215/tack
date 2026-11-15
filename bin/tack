@@ -481,7 +481,7 @@ cmd_open() {
     fi
   else
     command -v tmux >/dev/null 2>&1 || { echo "tack open: tmux is not installed." >&2; return 1; }
-    if tmux has-session -t "$session" 2>/dev/null; then
+    if tmux has-session -t "=$session" 2>/dev/null; then
       echo "tack open: attaching existing tmux session '$session'"
       [ "$detach" -eq 1 ] && return 0
       open_attach_tmux "$session"
@@ -586,6 +586,8 @@ prep_profile_dir() {
   # Onboarding state and per-project trust. Copied, not linked: the CLI rewrites
   # it constantly and the trust set is per config dir.
   [ -e "$cfg/.claude.json" ] || cp "$HOME/.claude.json" "$cfg/.claude.json" 2>/dev/null || true
+  # It holds every client's project paths and MCP env, so owner-only, like the source.
+  chmod 700 "$cfg" 2>/dev/null; chmod 600 "$cfg/.claude.json" 2>/dev/null
   echo "$cfg"
 }
 
@@ -639,7 +641,7 @@ cmd_shell() {
     # The copied .claude.json names the main account. Drop it so this dir
     # shows no account until /login fills it.
     if [ "$fresh" -eq 1 ] && [ -f "$cfg/.claude.json" ]; then
-      jq 'del(.oauthAccount)' "$cfg/.claude.json" > "$cfg/.claude.json.tmp" \
+      ( umask 077; jq 'del(.oauthAccount)' "$cfg/.claude.json" > "$cfg/.claude.json.tmp" ) \
         && mv "$cfg/.claude.json.tmp" "$cfg/.claude.json"
     fi
     export_profile_env "$cfg"
@@ -667,12 +669,16 @@ cmd_tmux() {
   # Always a new session. Attaching to an existing one mirrors every terminal
   # that ran this, so typing in one types in all. Reattach with tmux attach -t.
   # "=" makes has-session match exactly; a bare name also matches by prefix.
-  local base="$name${LOGIN:+-$LOGIN}" session n=1
+  # tmux stores '.' and ':' in a session name as '_', so probe that form.
+  local base session n=1
+  base="$(printf '%s' "$name${LOGIN:+-$LOGIN}" | tr '.:' '__')"
   session="$base"
   while tmux has-session -t "=$session" 2>/dev/null; do
     n=$((n + 1)); session="$base-$n"
   done
-  exec tmux new-session -s "$session" "tack shell $name${LOGIN:+ --login $LOGIN}"
+  # A tmux server started from an isolated shell hands its env to every new
+  # session, and tack shell then refuses to start. Clear it for the pane.
+  exec tmux new-session -s "$session" "env -u CLAUDE_CONFIG_DIR -u CLAUDE_SECURESTORAGE_CONFIG_DIR tack shell $name${LOGIN:+ --login $LOGIN}"
 }
 
 cmd_herd() {

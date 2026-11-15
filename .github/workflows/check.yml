@@ -13,6 +13,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # test-apply walks bin/tack history
       - name: install shellcheck and jq (macos)
         if: runner.os == 'macOS'
         run: brew install shellcheck jq
