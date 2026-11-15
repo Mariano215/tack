@@ -94,6 +94,12 @@ check ask  "$(printf 'cat <<EOF | sh\ngit push\nEOF')"
 check deny "$(printf 'cat <<-EOF\n\tx\n\tEOF\ncat .env')"
 check deny 'cat <<< "$(cat .env)"'
 check none "$(printf "cd /x && cat >> log.md <<'EOF'\nnote: git push later\nEOF")"
+# A quoted body is still checked when something outside it can run it.
+check deny "$(printf "x=1; eval \"\$(\ncat <<'EOF'\ncat ~/.aws/credentials\nEOF\n)\"")"
+check ask  "$(printf "cat <<'EOF' \\\\\n| sh\ngit push\nEOF")"
+check deny "$(printf "cat > s <<'EOF'\ncat .env\nEOF\nbash s")"
+check deny "$(printf "bash -c \"\$(true; cat <<'EOF'\ncat .env\nEOF\n)\"")"
+check none "$(printf "git commit -q -F - <<'EOF'\nfix: guard push and .env reads\nEOF\ngit log --oneline -1")"
 check ask  "$(printf '/bin/bash <<EOF\ngit push\nEOF')"
 check ask  "$(printf 'xargs -I{} sh -c {} <<EOF\ngit push\nEOF')"
 check deny "$(printf 'cat > a <<EOF\nnever closed .env')"

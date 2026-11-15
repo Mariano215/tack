@@ -40,8 +40,12 @@ decide() {
 #     (a path prefix is allowed), and nothing is piped onward (no "|" after <<);
 #   - the delimiter is a quoted bare word ('EOF' or "EOF"), so nothing expands;
 #   - the exact terminator line is found before the input ends.
+#   - nothing outside the body can run it: no $(, backtick, <(, eval, line
+#     continuation, or shell or interpreter word anywhere else in the command
+#     (that catches eval "$( on the line before, "\ | sh" and "bash written.sh").
 # Everything else (bash <<, python - <<, cat <<EOF | sh, odd quoting) keeps its
 # body, so this can only remove false asks, never hide a command that runs.
+orig_cmd="$cmd"
 cmd=$(printf '%s\n' "$cmd" | awk '
   BEGIN { inhd = 0; out = ""; orig = "" }
   { orig = orig $0 "\n" }
@@ -75,6 +79,12 @@ cmd=$(printf '%s\n' "$cmd" | awk '
     delim = d; inhd = 1
   }
   END { if (inhd) printf "%s", orig; else printf "%s", out }') || exit 0
+if [ "$cmd" != "$orig_cmd" ]; then
+  RUNNER='\$\(|`|<\(|\\$|(^|[^a-z0-9_.-])(bash|sh|zsh|dash|ksh|fish|eval|source|exec|env|sudo|doas|xargs|nohup|time|watch|ssh|python[0-9.]*|node|deno|bun|perl|ruby|php|osascript|awk|sed)([^a-z0-9_.-]|$)|(^|[;&|[:space:]])\.[[:space:]]'
+  # A grep error (exit 2) also keeps the original: fail toward checking more.
+  printf '%s\n' "$cmd" | tr '[:upper:]' '[:lower:]' | grep -Eq "$RUNNER"; rr=$?
+  [ "$rr" -eq 1 ] || cmd="$orig_cmd"
+fi
 [ -n "$cmd" ] || exit 0
 
 lc=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
