@@ -103,8 +103,8 @@ cmd=$(printf '%s\n' "$cmd" | awk '
 if [ "$cmd" != "$orig_cmd" ]; then
   # Allowlist, not a denylist of runners: every segment left outside the body
   # must be one of these, or the original command is checked in full.
-  SEG_OK='^[[:space:]]*$|^[[:space:]]*cd[[:space:]]+[^[:space:]$`\\]+[[:space:]]*$|^[[:space:]]*date[[:space:]]+'"'"'\+[^'"'"'$`]*'"'"'[[:space:]]*>>?[[:space:]]*[^[:space:]$`\\]+[[:space:]]*$|^[[:space:]]*git[[:space:]]+(add|status|log|diff)([[:space:]][^$`\\<>]*)?$|^[[:space:]]*(([^[:space:]]*/)?(cat|tee)|git[[:space:]]+(commit|tag))[[:space:]][^$`\\]*<<-?[[:space:]]*['"'"'"][a-z_][a-z0-9_]*['"'"'"][^$`\\]*$'
-  segs_out=$(printf '%s\n' "$cmd" | tr '[:upper:]' '[:lower:]' | sed -E 's/&&|\|\||;|\|/\
+  SEG_OK='^[[:space:]]*$|^[[:space:]]*cd[[:space:]]+[^[:space:]$`\\()&]+[[:space:]]*$|^[[:space:]]*date[[:space:]]+'"'"'\+[^'"'"'$`]*'"'"'[[:space:]]*>>?[[:space:]]*[^[:space:]$`\\()&]+[[:space:]]*$|^[[:space:]]*git[[:space:]]+(add|status)([[:space:]][^$`\\()&<>]*)?$|^[[:space:]]*git[[:space:]]+log([[:space:]]+(--oneline|-[0-9]+|-n[[:space:]]*[0-9]+))*[[:space:]]*$|^[[:space:]]*(([^[:space:]]*/)?(cat|tee)|git[[:space:]]+(commit|tag))[[:space:]][^$`\\()&]*<<-?[[:space:]]*['"'"'"][a-z_][a-z0-9_]*['"'"'"][^$`\\()&]*$'
+  segs_out=$(printf '%s\n' "$cmd" | tr '[:upper:]' '[:lower:]' | sed -E 's/&&|\|\||;|\||&/\
 /g')
   # grep -v prints the segments that are not allowed; exit 1 means none.
   printf '%s\n' "$segs_out" | grep -Ev "$SEG_OK" >/dev/null; rr=$?
