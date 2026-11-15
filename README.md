@@ -203,6 +203,18 @@ it sees only that profile's plugins, skills and MCP servers.
 `exit` to return. It refuses to nest, so you cannot accidentally end up two
 profiles deep.
 
+Each `tack tmux` run opens its own session (`dev`, then `dev-2`, ...), so typing
+in one terminal never reaches another. Reattach a detached one with
+`tmux attach -t <session>`.
+
+Every profile shares the one login by default. `--login <tag>` gives a profile a
+separate login in `~/.claude-profiles/<name>@<tag>` with its own keychain slot,
+for a second subscription or to keep two clients apart:
+
+```bash
+tack tmux audit --login acme    # session 'audit-acme'; run /login once inside
+```
+
 Two details that matter:
 
 - The `plugins/` tree is roughly 3 GB, so it is symlinked rather than copied. A
@@ -330,7 +342,7 @@ that a sync cannot carry, rather than reporting success and leaving them behind.
 | `tack use <name>` | Apply a profile to every installed agent (Claude config dir, Codex profile) |
 | `tack open <name>` | Prepare the profile and open Claude and Codex together (tmux or Herdr) |
 | `tack shell <name>` | Apply into an isolated config dir and open a subshell there |
-| `tack tmux <name>` | Same, wrapped in `tmux new -As <name>` |
+| `tack tmux <name> [--login <tag>]` | Same, in a new tmux session per run; `--login` uses a separate Claude login |
 | `tack herd <name>` | Same, as a Herdr workspace |
 | `tack install <name>` | Clone `$HARNESS_ORG/tack-<name>` and apply it |
 | `tack sync [--push]` | Pull every profile, advance its engine pin, re-apply the active one |

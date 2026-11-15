@@ -6,6 +6,12 @@ existing profile needs.
 
 ## Unreleased
 
+- `tack tmux` opens a new session on every run (`audit`, `audit-2`, ...).
+  It used to attach to the session of the same name, so every terminal that
+  ran it mirrored the same input.
+- `tack tmux` and `tack shell` take `--login <tag>`: a separate config dir
+  (`<name>@<tag>`) and keychain slot, so one profile can run on a second
+  Claude login.
 - Codex installs `read-document` too. Its SKILL.md no longer assumes
   Claude Code's Read tool or config path.
 - `tack tune`: a weekly self-tuning job modeled on google-research/harness2.

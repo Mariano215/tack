@@ -49,8 +49,14 @@ Profile commands:
 
 Workspace commands:
   tack open <profile>          Open both installed agents in one workspace.
-  tack shell <profile>         Enter an isolated Claude shell in this terminal.
-  tack tmux <profile>          Open the legacy isolated Claude tmux session.
+  tack shell <profile> [--login <tag>]
+                               Enter an isolated Claude shell in this terminal.
+  tack tmux <profile> [--login <tag>]
+                               Open a new isolated Claude tmux session. Each run
+                               is its own session (audit, audit-2, ...).
+                               --login <tag> gives this profile a separate Claude
+                               login (own config dir and keychain slot); run
+                               /login once inside it. Reuse the tag to reuse it.
   tack herd <profile>          Open the legacy isolated Claude Herdr workspace.
 
 Common open options:
@@ -596,19 +602,58 @@ export_profile_env() {
   ACTIVE_FILE="$1/.harness-active"
 }
 
+# Reads an optional "--login <tag>" after the profile name into LOGIN. The tag
+# lands in a dir name, a tmux session name and a shell command, so it is
+# restricted to a safe charset.
+parse_login() {
+  LOGIN=""
+  [ "$#" -eq 0 ] && return 0
+  if [ "$1" != "--login" ] || [ "$#" -ne 2 ]; then
+    echo "tack: expected nothing or '--login <tag>' after the profile name, got: $*" >&2
+    return 2
+  fi
+  case "$2" in
+    ""|*[!A-Za-z0-9_-]*)
+      echo "tack: login tag '$2' must be letters, digits, '-' or '_'. Example: --login work" >&2
+      return 2 ;;
+  esac
+  LOGIN="$2"
+}
+
 cmd_shell() {
   local name="${1:-}"
   require_profile "$name" shell || return 1
+  shift; parse_login "$@" || return $?
   if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
     echo "tack: already in an isolated shell ($CLAUDE_CONFIG_DIR). Run 'exit' first." >&2
     return 1
   fi
-  local cfg; cfg="$(prep_profile_dir "$name")"
-  export_profile_env "$cfg"
+  local cfg
+  if [ -z "$LOGIN" ]; then
+    cfg="$(prep_profile_dir "$name")"
+    export_profile_env "$cfg"
+  else
+    local fresh=0
+    [ -e "$PROFILE_HOME/$name@$LOGIN/.claude.json" ] || fresh=1
+    cfg="$(prep_profile_dir "$name@$LOGIN")"
+    # The copied .claude.json names the main account. Drop it so this dir
+    # shows no account until /login fills it.
+    if [ "$fresh" -eq 1 ] && [ -f "$cfg/.claude.json" ]; then
+      jq 'del(.oauthAccount)' "$cfg/.claude.json" > "$cfg/.claude.json.tmp" \
+        && mv "$cfg/.claude.json.tmp" "$cfg/.claude.json"
+    fi
+    export_profile_env "$cfg"
+    # A path here hashes to its own keychain slot, so this login stays apart.
+    export CLAUDE_SECURESTORAGE_CONFIG_DIR="$cfg"
+  fi
   cmd_use "$name" || return $?
   echo ""
-  echo "tack: isolated shell for '$name'"
-  echo "  CLAUDE_CONFIG_DIR=$cfg   (plugins, login and memory shared with ~/.claude)"
+  echo "tack: isolated shell for '$name'${LOGIN:+ (login '$LOGIN')}"
+  if [ -z "$LOGIN" ]; then
+    echo "  CLAUDE_CONFIG_DIR=$cfg   (plugins, login and memory shared with ~/.claude)"
+  else
+    echo "  CLAUDE_CONFIG_DIR=$cfg   (own login: run /login in claude the first time)"
+  fi
   echo "  'exit' returns to your normal shell. Delete with: rm -rf $cfg"
   # Not exec: with exec, 'exit' closes the terminal tab instead of returning.
   "${SHELL:-/bin/bash}"
@@ -617,9 +662,17 @@ cmd_shell() {
 cmd_tmux() {
   local name="${1:-}"
   require_profile "$name" tmux || return 1
+  shift; parse_login "$@" || return $?
   command -v tmux >/dev/null 2>&1 || { echo "tack: tmux not installed. Try: brew install tmux" >&2; return 1; }
-  # -A attaches if the session already exists, so this is also "switch to it".
-  exec tmux new -As "$name" "tack shell $name"
+  # Always a new session. Attaching to an existing one mirrors every terminal
+  # that ran this, so typing in one types in all. Reattach with tmux attach -t.
+  # "=" makes has-session match exactly; a bare name also matches by prefix.
+  local base="$name${LOGIN:+-$LOGIN}" session n=1
+  session="$base"
+  while tmux has-session -t "=$session" 2>/dev/null; do
+    n=$((n + 1)); session="$base-$n"
+  done
+  exec tmux new-session -s "$session" "tack shell $name${LOGIN:+ --login $LOGIN}"
 }
 
 cmd_herd() {
@@ -802,7 +855,11 @@ cmd_status() {
   echo "Codex active: $codex_active${CODEX_HOME:+   config: $CODEX_HOME}"
   for d in "$PROFILE_HOME"/*/; do
     [ -f "$d/.harness-active" ] || continue
-    echo "  isolated: $(basename "$d")  (tack tmux $(basename "$d"))"
+    local b; b="$(basename "$d")"
+    case "$b" in
+      *@*) echo "  isolated: $b  (tack tmux ${b%@*} --login ${b#*@})" ;;
+      *)   echo "  isolated: $b  (tack tmux $b)" ;;
+    esac
   done
   if command -v claude >/dev/null 2>&1; then
     echo "Claude MCP servers:"; claude mcp list 2>/dev/null | sed -n 's/^\([a-zA-Z0-9_-]*\): .* - .*/  \1/p' | sort -u
