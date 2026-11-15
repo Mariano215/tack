@@ -94,6 +94,8 @@ check ask  "$(printf 'cat <<EOF | sh\ngit push\nEOF')"
 check deny "$(printf 'cat <<-EOF\n\tx\n\tEOF\ncat .env')"
 check deny 'cat <<< "$(cat .env)"'
 check none "$(printf "cd /x && cat >> log.md <<'EOF'\nnote: git push later\nEOF")"
+# The exact log-append shape hooks/session-summary.sh asks for must pass.
+check none "$(printf "date '+%%n## %%Y-%%m-%%d %%H:%%M' >> .agent/log.md && cat >> .agent/log.md <<'EOF'\n- next: git push, rotate the .env key\nEOF")"
 # A quoted body is still checked when something outside it can run it.
 check deny "$(printf "x=1; eval \"\$(\ncat <<'EOF'\ncat ~/.aws/credentials\nEOF\n)\"")"
 check ask  "$(printf "cat <<'EOF' \\\\\n| sh\ngit push\nEOF")"
