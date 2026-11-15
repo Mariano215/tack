@@ -6,6 +6,7 @@ existing profile needs.
 
 ## Unreleased
 
+- bash-guard skips heredoc text written by cat, tee, git commit or git tag (quoted delimiter, nothing piped onward, terminator found), so log entries and commit messages no longer trigger false asks or denies. Anything that a shell could run is still checked.
 - New core skill `ui-library-picker`: decision rules and checked install commands for shadcn/ui, coss ui, AlignUI, daisyUI, HeroUI and Ant Design, routed by "which UI library" and library names.
 
 ## v0.6.0

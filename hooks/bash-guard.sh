@@ -33,6 +33,56 @@ decide() {
     '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}'
 }
 
+# Heredoc bodies written as text (a log entry, a commit message) made the guard
+# ask or deny on a body that only mentions "git push" or ".env". A body is
+# dropped only when all of these hold, otherwise the whole command is checked:
+#   - the line is a plain write: it starts with cat, tee, git commit or git tag
+#     (a path prefix is allowed), and nothing is piped onward (no "|" after <<);
+#   - the delimiter is a bare word, optionally in one matching pair of quotes;
+#   - the exact terminator line is found before the input ends.
+# Everything else (bash <<, python - <<, cat <<EOF | sh, odd quoting) keeps its
+# body, so this can only remove false asks, never hide a command that runs.
+cmd=$(printf '%s\n' "$cmd" | awk '
+  BEGIN { inhd = 0; out = ""; orig = "" }
+  { orig = orig $0 "\n" }
+  inhd {
+    t = $0; if (strip_tabs) sub(/^\t+/, "", t)
+    if (t == delim) { inhd = 0; next }
+    # An unquoted body runs $(...) and backticks, so it is not just text.
+    if (!quoted && (index($0, "$(") > 0 || index($0, "`") > 0)) keepall = 1
+    next
+  }
+  {
+    out = out $0 "\n"
+    i = index($0, "<<")
+    if (i == 0 || substr($0, i + 2, 1) == "<" || (i > 1 && substr($0, i - 1, 1) == "<")) next
+    # The segment that holds <<: text after the last ; && or || before it.
+    head = substr($0, 1, i - 1); sub(/.*(;|&&|\|\|)/, "", head); sub(/^[ \t]*/, "", head)
+    if (index(head, "|") > 0) next
+    if (head !~ /^([^ \t;&|]*\/)?(cat|tee)([ \t]|$)/ && head !~ /^([^ \t;&|]*\/)?git[ \t]+(commit|tag)([ \t]|$)/) next
+    rest = substr($0, i + 2)
+    if (index(rest, "|") > 0) next
+    strip_tabs = (substr(rest, 1, 1) == "-"); if (strip_tabs) rest = substr(rest, 2)
+    sub(/^[ \t]*/, "", rest)
+    q = substr(rest, 1, 1)
+    if (q == "\"" || q == "\047") {
+      rest = substr(rest, 2)
+      if (!match(rest, /^[A-Za-z_][A-Za-z0-9_]*/)) next
+      d = substr(rest, RSTART, RLENGTH)
+      if (substr(rest, RLENGTH + 1, 1) != q) next
+      after = substr(rest, RLENGTH + 2, 1)
+    } else {
+      if (!match(rest, /^[A-Za-z_][A-Za-z0-9_]*/)) next
+      d = substr(rest, RSTART, RLENGTH)
+      after = substr(rest, RLENGTH + 1, 1)
+    }
+    if (after != "" && after !~ /[ \t;&>)]/) next
+    quoted = (q == "\"" || q == "\047")
+    delim = d; inhd = 1
+  }
+  END { if (inhd || keepall) printf "%s", orig; else printf "%s", out }') || exit 0
+[ -n "$cmd" ] || exit 0
+
 lc=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
 stripped=$(printf '%s' "$lc" | sed -E "s/$ENV_OK/ /g")
 # Quotes and backslashes removed: .a''ws/credentials reads as .aws/credentials.

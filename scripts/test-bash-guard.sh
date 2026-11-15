@@ -82,6 +82,24 @@ check ask  "git -c alias.x='!git push' x"
 check ask  'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.p GIT_CONFIG_VALUE_0=push git p'
 # deny wins over ask
 check deny 'cat .env && git push'
+# Heredoc bodies are text unless a shell or interpreter reads them.
+check none "$(printf 'cat >> .agent/log.md <<EOF\n- next: git push the branch, rotate .env\nEOF')"
+check none "$(printf "git commit -q -F - <<'EOF'\nfix: guard push and .env reads\nEOF")"
+check ask  "$(printf 'cat >> log.md <<EOF\ntext\nEOF\ngit push origin main')"
+check deny "$(printf 'bash <<EOF\ncat ~/.aws/credentials\nEOF')"
+check deny "$(printf "python3 - <<'PY'\nopen('.env').read()\nPY")"
+check ask  "$(printf 'cat <<EOF | sh\ngit push\nEOF')"
+check deny "$(printf 'cat <<-EOF\n\tx\n\tEOF\ncat .env')"
+check deny 'cat <<< "$(cat .env)"'
+check none "$(printf 'cd /x && cat >> log.md <<EOF\nnote: git push later\nEOF')"
+check ask  "$(printf '/bin/bash <<EOF\ngit push\nEOF')"
+check ask  "$(printf 'xargs -I{} sh -c {} <<EOF\ngit push\nEOF')"
+check deny "$(printf 'cat > a <<EOF\nnever closed .env')"
+check deny "$(printf 'cat <<\"E\"OF\nx\nEOF\ncat .env')"
+check ask  "$(printf 'echo \"<<EOF\"\ngit push\nEOF')"
+check ask  "$(printf 'cat > a <<EOF\n$(git push)\nEOF')"
+check deny "$(printf 'cat > a <<EOF\n`cat .env`\nEOF')"
+check none "$(printf "cat > a <<'EOF'\n\$(git push) is only text here\nEOF")"
 
 printf '' | bash "$HOOK" >/dev/null 2>&1 || fail "empty stdin should exit 0"
 printf 'not json' | bash "$HOOK" >/dev/null 2>&1 || fail "malformed stdin should exit 0"
