@@ -18,14 +18,14 @@ cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null | 
 # .env.template (exactly) and .envrc are not. Those are stripped before matching.
 ENV_OK='\.env\.(example|sample|template)($|[^a-z0-9_.-])'
 SECRET='(\.aws/|\.ssh/|(^|[^a-z0-9_.-])\.env($|[^a-z0-9_-])|\.pem($|[^a-z0-9])|id_rsa|id_ed25519|\.credentials\.json|\.claude\.json|\.claude-mem/settings\.json|\.fal-key|\.config/gh/hosts\.yml|security[[:space:]]+(find|dump)-(generic|internet)-password|security[[:space:]]+dump-keychain)'
-PUBLISH='(^|[^a-z0-9_.-])(gh[[:space:]]+pr[[:space:]]+merge|gh[[:space:]]+release[[:space:]]+(create|edit|delete|upload)|gh[[:space:]]+repo[[:space:]]+create[[:space:]].*--push|(tack|tack)[[:space:]]+sync[[:space:]]+--push)([[:space:];&|()<>`'"'"'"]|$)'
+PUBLISH='(^|[^a-z0-9_.-])(gh[[:space:]]+pr[[:space:]]+merge|gh[[:space:]]+release[[:space:]]+(create|edit|delete|upload)|gh[[:space:]]+repo[[:space:]]+create[[:space:]].*--push|tack[[:space:]]+sync[[:space:]]+--push)([[:space:];&|()<>`'"'"'"]|$)'
 # push or send-pack as a whole token (ends at space, end, or ;&|()<> or backtick) anywhere after a git token, or any git alias definition (-c alias.x=..., GIT_CONFIG_KEY_n).
 GITPUSH='(^|[^a-z0-9_.-])git([[:space:]].*)?[[:space:]'"'"'"](push|send-pack)([[:space:];&|()<>`'"'"'"]|$)'
 GITALIAS='(^|[^a-z0-9_.-])git[[:space:]].*alias\.|git_config_key_|git_config_parameters'
 # gh api writes: a non-GET method, or any field/input flag (those make it a POST).
 GHAPI='(^|[^a-z0-9_.-])gh[[:space:]]+api.*([[:space:]](-x|--method)[[:space:]=]*(post|put|patch|delete)|[[:space:]](-f|--field|--raw-field|--input))'
 # Secret-dir mentions combined with a form the regexes cannot read reliably.
-SPFX='(\.aws|\.ssh|\.config/gh|\.claude-mem|\.claude-profiles|\.fal-key|credentials)'
+SPFX='(\.aws|\.ssh|\.config/gh|\.claude-mem|\.claude-profiles|\.fal-key|credentials|\.claude\.j|\.cred|\.en|id_rsa|id_ed|\.pem|hosts\.yml)'
 OBF="${SPFX}.*(eval|base64|\`|\\\$\()|(eval|base64|\`|\\\$\().*${SPFX}|[^[:space:]]*${SPFX}[^[:space:]]*[*?[]|[*?[][^[:space:]]*${SPFX}"
 
 decide() {

@@ -94,7 +94,7 @@ if [ -n "$core_head" ] && [ -f "$CORE_STAMP" ]; then
      && ! git -C "$CORE_DIR" merge-base --is-ancestor "$stamped" HEAD 2>/dev/null; then
     SHARED_OK=0
     echo "  shared state left as it is: core ${stamped:0:7} wrote it, and this pin (${core_head:0:7}) is not newer."
-    echo "    Fix: tack sync --push (moves every pin forward). To force it: rm $CORE_STAMP, then tack use again."
+    echo "    Fix: tack sync --push (moves every pin forward). If that stamp came from a branch or worktree core: rm $CORE_STAMP, then tack use again."
   fi
 fi
 if [ "$SHARED_OK" -eq 1 ] && [ -n "$core_head" ]; then
@@ -309,8 +309,9 @@ if [ -f "$HOME/.local/bin/tack" ] && git -C "$CORE_DIR" rev-parse --git-dir >/de
 $(git -C "$CORE_DIR" rev-list --full-history HEAD -- bin/tack 2>/dev/null | tr -d '\r')
 EOF
 fi
-[ "$SHARED_OK" -eq 1 ] || tack_known=0
-if [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" && [ "$tack_known" -eq 0 ]; then
+if [ "$SHARED_OK" -eq 0 ]; then
+  :  # an older core: the stamp message above already says why tack is left alone
+elif [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack" && [ "$tack_known" -eq 0 ]; then
   echo "  tack left as it is: ~/.local/bin/tack is not from this core's history (a newer pin, or a hand edit). Fix: tack sync --push; if you edited it, rm ~/.local/bin/tack and re-run tack use"
 elif [ -f "$CORE_DIR/bin/tack" ] && ! cmp -s "$CORE_DIR/bin/tack" "$HOME/.local/bin/tack"; then
   mkdir -p "$HOME/.local/bin"
