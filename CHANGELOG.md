@@ -4,6 +4,36 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## v0.8.0
+
+- security-guidance and commit-commands are off in `base-settings.json`
+  (prompt-only plugins). The dev profile no longer turns them back on, and now
+  enables no plugins at all (feature-dev, pyright-lsp, typescript-lsp,
+  plugin-dev and code-review dropped; the built-in `/code-review` covers the
+  last one). Every plugin in `base-settings.json` is now off.
+- `base-settings.json` drops the marketplaces addy-agent-skills, caveman,
+  frontend-slides, nateherk, openai-codex, ponytail and ui-ux-pro-max-skill and
+  their plugin entries, the `"agent": "task-orchestrator"` default, and
+  `CAVEMAN_DEFAULT_MODE`. apply prunes a dropped marketplace from the registry
+  unless it is listed in `.harness-marketplaces-keep`.
+- The model-router-nudge PreToolUse hook and the security-file-nudge
+  PostToolUse hook are gone, with `scripts/test-model-router.sh`. So are the
+  agents task-orchestrator and code-security-auditor, and the skills
+  smart-agent-spawner, fullreview, repro, git-best-practices and
+  security-audit. Use the built-in `/code-review` and `/security-review`.
+- Manifest contract: the `caveman` key is removed from the schema, the
+  `check.sh` validator and apply. A profile that still sets it is ignored for
+  that key; delete the line.
+- `templates/CLAUDE.md` drops its Skills section and the "Deliver what was
+  asked" line. `templates/AGENTS.md` drops its Communication section.
+- Profiles drop the design plugins frontend-design, ui-ux-pro-max and
+  frontend-slides. animate and the tool plugins stay.
+- The daily update hook no longer upgrades graphifyy or runs
+  `graphify install --platform claude`.
+- The Codex plugin's graph-stale and security-file-nudge PostToolUse hooks and
+  their scripts are gone, so `harness-policy` ships with no active hooks, and
+  `templates/AGENTS.md` drops its Graphify section. The `graphify` skill stays.
+
 ## v0.7.0
 
 - The UserPromptSubmit skill router is gone: `hooks/skill-router.sh`,

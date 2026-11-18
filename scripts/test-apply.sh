@@ -258,7 +258,6 @@ if [ "$rc" -ne 0 ]; then
   echo "$out"; bad "v2 Claude apply exited $rc"
 elif jq -e '.enabledPlugins["v2-plugin@example"] == true
   and .env.V2_MARKER == "claude"
-  and .env.CAVEMAN_DEFAULT_MODE == "off"
   and .permissions.defaultMode == "plan"' "$CFG8/settings.json" >/dev/null; then
   ok "v2 provider config reached composed Claude settings"
 else

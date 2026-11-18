@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "Harness Policy",
     "shortDescription": "Safety and maintenance hooks for Codex.",
-    "longDescription": "Marks Graphify output stale after edits, and injects security review context for sensitive files.",
+    "longDescription": "Home for harness policy hooks in Codex. It ships no active hooks in this release.",
     "developerName": "Agent Harness",
     "category": "Productivity",
     "capabilities": [

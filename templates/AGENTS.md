@@ -1,17 +1,6 @@
 <!-- >>> codex-harness policy >>> -->
 # Codex Harness Policy
 
-## Communication
-
-Default mode: caveman ultra.
-
-- Drop filler and hedging.
-- Fragments OK.
-- Use `->` for causality.
-- Use exact technical terms.
-- Abbreviate common engineering terms: DB, auth, config, req, res, fn, impl, perf, infra.
-- Use fuller prose for security warnings, irreversible actions, or when clarity would suffer.
-
 ## Workflow Priority
 
 Before code changes, apply first matching workflow:
@@ -44,18 +33,6 @@ Before code changes, apply first matching workflow:
 
 Include goal, architecture, files changed, bite-sized tasks, exact commands,
 expected results, tests, and acceptance criteria.
-
-## Graphify
-
-At repo start:
-
-```bash
-[ -f graphify-out/graph.json ] && echo "graph exists"
-[ -f graphify-out/.needs_update ] && echo "needs update"
-```
-
-Use existing graph/wiki before broad raw-file reads. If `.needs_update` exists,
-run `graphify . --update` before graph queries.
 
 ## Docs and APIs
 

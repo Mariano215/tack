@@ -10,15 +10,8 @@ The ghost hook enforces this on client-facing document formats only (.txt,
 make the list your own.
 
 # Coding defaults
-Deliver what was asked, at the scope asked. If the request looks mistaken, say
-so in one sentence and do it as asked.
 Do not spawn an agent to check your own output. The `code-reviewer` agent at a
 commit gate is the exception: it reads the diff in a fresh context.
-
-# Skills
-When a request matches a skill description in the skills list, invoke that
-skill instead of improvising. Slash forms work directly: /pre-push-auto-fix
-/document-with-goal /graphify /handoff /harness-builder.
 
 # Project record: the .agent/ directory
 A repo that contains a `.agent/` directory collects its own paper trail. The

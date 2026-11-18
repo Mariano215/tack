@@ -28,4 +28,3 @@ Steps:
 
 5. **Summarize** the before/after changes in a short list.
 
-Note: client-facing rewrites (proposals, emails, reports) suspend caveman mode per engagement rules — write in normal professional prose.

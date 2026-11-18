@@ -168,7 +168,6 @@ jq -s '
   | .enabledPlugins = (($base.enabledPlugins // {}) + ($m.plugins // {}))
   | .env = (($base.env // {}) + ($m.env // {}))
   | .permissions = (($base.permissions // {}) + ($m.permissions // {}))
-  | if ($m.caveman // null) != null then .env.CAVEMAN_DEFAULT_MODE = $m.caveman else . end
 ' "$CORE_DIR/base-settings.json" "$MANIFEST" > "$comp"
 # personal-overrides.json is machine-local: env, theme, permissions, login, effort.
 # It must NOT own plugin enablement. Profiles do, via base-settings + the manifest.
@@ -180,16 +179,9 @@ jq -s '
 # authority the agent runs under should be readable in git, not inherited from
 # an untracked file nobody reviews. The rest of .permissions (allow lists,
 # per-machine grants) stays machine-local.
-# A manifest that declares caveman owns CAVEMAN_DEFAULT_MODE the same way. Eight
-# manifests were set to "off" and every session still came up "lite", because a
-# stale key in personal-overrides.json merged last and beat all of them without
-# printing a word.
 PROFILE_OWNED='[["enabledPlugins"],["extraKnownMarketplaces"]]'
 if jq -e '.permissions.defaultMode' "$MANIFEST" >/dev/null 2>&1; then
   PROFILE_OWNED="$(jq -nc --argjson p "$PROFILE_OWNED" '$p + [["permissions","defaultMode"]]')"
-fi
-if jq -e '.caveman' "$MANIFEST" >/dev/null 2>&1; then
-  PROFILE_OWNED="$(jq -nc --argjson p "$PROFILE_OWNED" '$p + [["env","CAVEMAN_DEFAULT_MODE"]]')"
 fi
 if [ -f "$CLAUDE/personal-overrides.json" ] && jq -e . "$CLAUDE/personal-overrides.json" >/dev/null 2>&1; then
   shadowed="$(jq -r --argjson owned "$PROFILE_OWNED" \
@@ -515,7 +507,7 @@ KNOWN="$CLAUDE/plugins/known_marketplaces.json"
 MKT_KEEP="$CLAUDE/.harness-marketplaces-keep"
 if [ "$SHARED_OK" -eq 1 ] && command -v claude >/dev/null 2>&1 && [ -f "$KNOWN" ]; then
   wanted="$(jq -r '(.extraKnownMarketplaces // {}) | keys[]' "$CORE_DIR/base-settings.json" 2>/dev/null | tr -d '\r')"
-  # tr as at 3a: without it every name reads as "caveman\r", matches nothing in
+  # tr as at 3a: without it every name reads as "name\r", matches nothing in
   # $wanted (captured through $(...), so already CR-free), and the whole registry
   # is treated as prune-worthy — including the marketplaces base-settings names.
   jq -r 'keys[]' "$KNOWN" 2>/dev/null | tr -d '\r' | while read -r m; do

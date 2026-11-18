@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.7.0-3B7A57"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.8.0-3B7A57"></a>
 </p>
 
 <p align="center">
@@ -426,8 +426,8 @@ isolated config dir rather than your main one.
 
 The engine (`bin/tack`, `lib/`, `hooks/`, `verify-setup.sh`), one adapter per
 agent (`adapters/claude/`, `adapters/codex/`), a repo-local Codex plugin
-(`codex-marketplace/`) that marks Graphify output stale after edits and adds
-security context to sensitive changes, a set of general-purpose skills
+(`codex-marketplace/`) that adds security context to sensitive changes, a set
+of general-purpose skills
 (docs, security audit, prompt-injection defense, code review, knowledge graphs,
 and `harness-builder` for new profiles),
 and `ghost`, a hook that blocks LLM-tell phrasing in `.txt`, `.docx` and `.pdf`

@@ -41,26 +41,6 @@ grep -qxF 'plugin add harness-policy@agent-harness' "$CODEX_PLUGIN_LOG" \
 grep -q '^registered:' "$CODEX_HOME/.harness-plugin-status" \
   && ok "manual hook trust recorded" || bad "plugin status incorrect"
 
-echo "== 2. edits mark Graphify output stale =="
-mkdir -p "$TMP/repo/graphify-out"
-echo '{}' > "$TMP/repo/graphify-out/graph.json"
-graph_out="$(printf '%s' "{\"cwd\":\"$TMP/repo\"}" | bash "$PLUGIN/scripts/graph-stale.sh")"
-[ -f "$TMP/repo/graphify-out/.needs_update" ] \
-  && printf '%s' "$graph_out" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' >/dev/null \
-  && ok "Graphify stale marker and context emitted" || bad "Graphify stale hook failed"
-
-echo "== 3. sensitive edits inject security context =="
-security_out="$(printf '%s' '{"tool_input":{"file_path":"src/auth/session.ts"}}' | bash "$PLUGIN/scripts/security-file-nudge.sh")"
-printf '%s' "$security_out" | jq -e '.hookSpecificOutput.additionalContext | contains("SECURITY-SENSITIVE CHANGE")' >/dev/null \
-  && ok "security nudge emitted" || bad "security nudge missing"
-safe_out="$(printf '%s' '{"tool_input":{"file_path":"src/colors.ts"}}' | bash "$PLUGIN/scripts/security-file-nudge.sh")"
-[ -z "$safe_out" ] && ok "ordinary edit stays quiet" || bad "ordinary edit triggered security nudge"
-
-echo "== 4. malformed hook input fails open =="
-malformed="$(printf '%s' 'not-json' | bash "$PLUGIN/scripts/security-file-nudge.sh")"; rc=$?
-[ "$rc" -eq 0 ] && [ -z "$malformed" ] \
-  && ok "malformed input allowed" || bad "malformed input blocked tool execution"
-
 if [ "$fails" -ne 0 ]; then
   echo "Codex plugin tests FAILED: $fails"
   exit 1

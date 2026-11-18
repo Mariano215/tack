@@ -30,7 +30,6 @@ sync() {
 # Allowlist: live-developed artifacts whose source of truth is ~/.claude.
 # Hooks, goal skills, templates, and settings are edited IN THE REPO and are
 # deliberately absent here.
-sync "$HOME/.claude/skills/fullreview/"  "$REPO_ROOT/skills/fullreview/"
 sync "$HOME/.claude/skills/graphify/"    "$REPO_ROOT/skills/graphify/"
 sync "$HOME/.claude/skills/ghost/"       "$REPO_ROOT/skills/ghost/"
 sync "$HOME/.claude/skills/scroll-world/" "$REPO_ROOT/skills/scroll-world/"

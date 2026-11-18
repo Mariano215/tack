@@ -2,7 +2,6 @@
   "schema_version": 2,
   "name": "proposal",
   "description": "Client proposals and engagement deliverables",
-  "caveman": "off",
   "mcp": [
     "atlassian"
   ],
@@ -11,9 +10,7 @@
   },
   "providers": {
     "claude": {
-      "plugins": {
-        "frontend-slides@frontend-slides": true
-      },
+      "plugins": {},
       "env": {}
     },
     "codex": {}

@@ -40,19 +40,19 @@ trap 'rm -rf "$CLAUDE_DIR"' EXIT
 cat > "$CLAUDE_DIR/settings.json" <<'JSON'
 {
   "enabledPlugins": {
-    "caveman@caveman": true,
+    "example@example": true,
     "code-review@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": false,
     "claude-mem@thedotmack": false,
-    "frontend-slides@frontend-slides": false
+    "slides@slides": false
   }
 }
 JSON
 
-check "enabled plugin means the marketplace is live"     yes caveman
+check "enabled plugin means the marketplace is live"     yes example
 check "one enabled among several is enough"              yes claude-plugins-official
 check "every plugin false means skip"                    no  thedotmack
-check "single false plugin means skip"                   no  frontend-slides
+check "single false plugin means skip"                   no  slides
 check "marketplace absent from enabledPlugins means skip" no nosuchmarket
 
 # A name that is a suffix of another must not match. Without the leading "@"
@@ -66,11 +66,11 @@ check "the full name still matches"                        yes othermarket
 # Missing or malformed settings.json must answer no rather than error out. This
 # hook runs async at session start and must never take the session down.
 rm -f "$CLAUDE_DIR/settings.json"
-check "missing settings.json is not an error"  no caveman
+check "missing settings.json is not an error"  no example
 echo 'not json' > "$CLAUDE_DIR/settings.json"
-check "malformed settings.json is not an error" no caveman
+check "malformed settings.json is not an error" no example
 printf '{}' > "$CLAUDE_DIR/settings.json"
-check "settings.json with no enabledPlugins key" no caveman
+check "settings.json with no enabledPlugins key" no example
 
 [ "$fails" -eq 0 ] && echo "test-marketplace-enabled: all passed"
 exit "$fails"

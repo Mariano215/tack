@@ -2,7 +2,6 @@
   "schema_version": 2,
   "name": "design",
   "description": "UI and brand design: design system first, guardrail audits, vendored components, screenshot verify loop",
-  "caveman": "off",
   "mcp": [
     "playwright"
   ],
@@ -12,8 +11,7 @@
   "providers": {
     "claude": {
       "plugins": {
-        "playwright@claude-plugins-official": true,
-        "frontend-design@claude-plugins-official": true
+        "playwright@claude-plugins-official": true
       },
       "env": {}
     },

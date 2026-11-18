@@ -40,15 +40,6 @@
     "description": {
       "type": "string"
     },
-    "caveman": {
-      "enum": [
-        "off",
-        "lite",
-        "full",
-        "ultra"
-      ],
-      "description": "sets CAVEMAN_DEFAULT_MODE"
-    },
     "permissions": {
       "type": "object",
       "description": "settings.permissions deltas merged over the core baseline. Declaring defaultMode here makes it profile-owned: personal-overrides.json can no longer set it, so the authority the agent runs under is readable in git. Other permission keys (allow lists, per-machine grants) stay machine-local.",

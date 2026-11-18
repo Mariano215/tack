@@ -1,6 +1,6 @@
 #!/bin/bash
 # Daily self-maintenance: fetch the active profile repo (+ core) and report waiting
-# commits, drift-check and heal, update plugins + graphifyy. Never applies new code.
+# commits, drift-check and heal, update plugins. Never applies new code.
 # Runs async from SessionStart. Safe to kill mid-run (no destructive ops).
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -149,16 +149,3 @@ claude plugin list --json 2>/dev/null \
 # now, in async background time, rather than in front of the user's next prompt.
 restore_marketplace_deps
 
-# 5. Update graphifyy (uv-managed tool install; pip only if uv is unavailable)
-if command -v uv >/dev/null 2>&1; then
-    # [gemini] extra pulls in openai (Gemini's OpenAI-compat client); a plain
-    # upgrade drops it silently and semantic extraction fails at runtime.
-    uv tool install --upgrade "graphifyy[gemini]" -q >/dev/null 2>&1
-else
-    pip install --upgrade graphifyy -q >/dev/null 2>&1
-fi
-# --platform: a plain install refreshes only the platform graphify detects, which
-# left the Claude skill 60 versions behind the package.
-# Run against the shared config dir. In a profile, CLAUDE_CONFIG_DIR/CLAUDE.md is
-# a link to the shared file, so graphify wrote that profile's skill path into it.
-( unset CLAUDE_CONFIG_DIR; graphify install --platform claude >/dev/null 2>&1 ) || true  # harness:shared

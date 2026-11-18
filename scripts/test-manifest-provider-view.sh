@@ -13,7 +13,6 @@ bad() { echo "  FAIL: $1"; fails=$((fails + 1)); }
 cat > "$TMP/v1.json" <<'JSON'
 {
   "name": "dev",
-  "caveman": "off",
   "plugins": {"claude-plugin@example": true},
   "env": {"SHARED": "v1"},
   "permissions": {"defaultMode": "plan"},
@@ -26,7 +25,6 @@ cat > "$TMP/v2.json" <<'JSON'
 {
   "schema_version": 2,
   "name": "dev",
-  "caveman": "off",
   "mcp": ["atlassian"],
   "skills_link": {"example": "~/.agents/skills/example"},
   "memory": {"enabled": true, "engine": "claude-mem"},
