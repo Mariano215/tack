@@ -4,12 +4,31 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
-## Unreleased
+## v0.7.0
 
-- New core skill `writing-for-agents`, adapted from mattpocock/skills (MIT, license kept in the skill folder): how to write a skill, CLAUDE.md or AGENTS.md so agents follow it. Routed on writing or editing one.
+- The UserPromptSubmit skill router is gone: `hooks/skill-router.sh`,
+  `hooks/skill-routes.json`, `scripts/test-skill-routes.sh`, and the router
+  checks in `verify-setup.sh`, `scripts/drift-report.sh` and `tack tune`
+  (the `route_ignored` signal, and `hooks/skill-routes.json` as an allowed tune
+  path). Skills now load from their own descriptions.
+- Both graphify hooks are gone: the SessionStart `graphify-session.sh` and the
+  PostToolUse hook that flagged `graphify-out/` stale. The `graphify` skill and
+  the Codex plugin's stale flag stay.
+- The vendored superpowers skills are gone (brainstorming, writing-plans,
+  executing-plans, subagent-driven-development, systematic-debugging,
+  test-driven-development, requesting-code-review,
+  verification-before-completion, finishing-a-development-branch,
+  using-git-worktrees), with `skills/SUPERPOWERS.md` and
+  `scripts/vendor-superpowers.sh`. `task-orchestrator`, `fullreview` and
+  `pre-push-auto-fix` no longer name them.
+- `templates/CLAUDE.md` is shorter: the methodology-skill lines and the token
+  discipline section are dropped, and the coding defaults are cut to two rules.
+- `autoMemoryEnabled` is now true in `base-settings.json` (the built-in auto
+  memory, not claude-mem, which stays off).
+- New core skill `writing-for-agents`, adapted from mattpocock/skills (MIT, license kept in the skill folder): how to write a skill, CLAUDE.md or AGENTS.md so agents follow it.
 - bash-guard skips heredoc text written by cat, tee, git commit or git tag (quoted delimiter such as <<'EOF', nothing piped onward, terminator found), so log entries and commit messages no longer trigger false asks or denies. Anything that a shell could run is still checked.
 - bash-guard no longer skips heredoc text when the same command has git diff, git log with an output flag, a single &, or a process substitution. These could write the hidden text to a file or run it.
-- New core skill `ui-library-picker`: decision rules and checked install commands for shadcn/ui, coss ui, AlignUI, daisyUI, HeroUI and Ant Design, routed by "which UI library" and library names.
+- New core skill `ui-library-picker`: decision rules and checked install commands for shadcn/ui, coss ui, AlignUI, daisyUI, HeroUI and Ant Design.
 
 ## v0.6.0
 

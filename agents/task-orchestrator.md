@@ -57,7 +57,7 @@ access, external integrations handling PII, or compliance scope.
    For a large feature, suggest /clear and build from that file in a fresh session
 4. Per checkpoint:
    a. Build -> general-purpose subagent: one checkpoint, the plan, the files;
-      returns a diff and the test output (test-driven-development skill, loop until green)
+      returns a diff and the test output (loop until green)
    b. Review -> code-reviewer with the plan and the diff; fix every CRITICAL/HIGH,
       rerun tests, re-review until verdict: approve (cap 3 rounds, then ask the user)
    c. Commit -> present the diff, test output and review verdict; user approves
@@ -71,7 +71,7 @@ Small feature (a handful of files, one checkpoint): skip the subagent build and 
 ### Bug Fix
 ```
 1. Reproduce -> write failing test first
-2. Investigate -> systematic-debugging skill (loop until root cause found)
+2. Investigate -> find the root cause before any fix
 3. Fix -> surgical change only (touch nothing else)
 4. Verify -> failing test now passes + full test suite green
 5. Security check -> if fix touches auth/input/session: check it yourself against the
@@ -110,8 +110,6 @@ Small feature (a handful of files, one checkpoint): skip the subagent build and 
 
 | Trigger | When |
 |---|---|
-| test-driven-development | Implementing any testable logic |
-| systematic-debugging | Any reported bug or failing test |
 | /fullreview --scope security,backend | Before pushing or merging a feature |
 | /fullreview | Before releasing to the customer |
 | /pre-push | Before creating any PR |

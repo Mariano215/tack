@@ -21,11 +21,6 @@ CLAUDE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 row() { printf '  [%s] %s\n' "$1" "$2"; }
 # list immediate subdir names of $1 (portable, sorted)
 dirnames() { find "$1" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort; }
-# true if a skill of this name is provided by an installed plugin marketplace.
-# -H: in an isolated config dir plugins/ is a symlink to the shared tree, and BSD
-# find does not follow a symlinked start point. Without it every plugin-provided
-# skill is misreported as a gap.
-plugin_skill() { [ -n "$(find -H "$CLAUDE/plugins/marketplaces" -maxdepth 4 -type d -name "$1" 2>/dev/null | head -1)" ]; }
 
 # ---- SKILLS ---------------------------------------------------------------
 printf '\n== SKILLS (repo=%s/skills vs %s/skills) ==\n' "$REPO_ROOT" "$CLAUDE"
@@ -45,23 +40,6 @@ done
 comm -13 <(echo "$repo_skills") <(echo "$inst_skills") | while read -r s; do
   [ -n "$s" ] && row uncaptured "$s   (installed here, NOT in repo)"
 done
-
-# ---- ROUTES point at real skills? ----------------------------------------
-printf '\n== SKILL ROUTES (skill-routes.json targets) ==\n'
-routes_json="$REPO_ROOT/hooks/skill-routes.json"
-if command -v jq >/dev/null 2>&1 && [ -f "$routes_json" ]; then
-  # jq.exe on Windows emits CRLF; without tr every name compares as "fullreview\r"
-  jq -r '.routes[].skill' "$routes_json" | tr -d '\r' | sort -u | while read -r sk; do
-    # satisfiable if a repo dir, an installed dir, or a plugin-provided skill
-    if [ -d "$REPO_ROOT/skills/$sk" ] || [ -e "$CLAUDE/skills/$sk" ] || plugin_skill "$sk"; then
-      row ok "$sk"
-    else
-      row gap "$sk   (route points at a skill that exists NOWHERE)"
-    fi
-  done
-else
-  echo "  (jq or routes file missing, skipped)"
-fi
 
 # ---- MCP SERVERS ----------------------------------------------------------
 # The union of every profile's .mcp is what the harness can register. Anything

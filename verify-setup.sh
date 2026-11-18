@@ -18,7 +18,6 @@ S="$CLAUDE/settings.json"
 if [ -f "$S" ] && jq -e . "$S" >/dev/null 2>&1; then ok "settings.json valid JSON"
 else err "settings.json missing or invalid JSON"; fi
 
-grep -q "skill-router.sh" "$S" 2>/dev/null && ok "skill-router wired" || err "skill-router not wired in settings"
 grep -q "ghost_precheck.py" "$S" 2>/dev/null && ok "ghost precheck wired" || warn "ghost precheck not wired"
 
 # doctor-parity: config parses, default mode is sane, tack/claude reachable
@@ -43,49 +42,21 @@ if [ -s "$declared_file" ]; then
 fi
 case ":$PATH:" in *":$HOME/.local/bin:"*) ok "~/.local/bin on PATH" ;; *) warn "~/.local/bin not on PATH (tack/claude may be unreachable)" ;; esac
 
-for h in skill-router.sh skill-routes.json session-summary.sh; do
+for h in session-summary.sh; do
   if [ -f "$CLAUDE/hooks/$h" ] && [ ! -L "$CLAUDE/hooks/$h" ]; then ok "hook $h (regular file)"
   else err "hook $h missing or a symlink"; fi
 done
-jq -e . "$CLAUDE/hooks/skill-routes.json" >/dev/null 2>&1 && ok "skill-routes.json valid JSON" || err "skill-routes.json invalid"
 
 # CRLF line endings: a repo cloned on Windows with core.autocrlf=true yields
 # scripts that die at the shebang, so every hook fails while the install looks
 # complete. .gitattributes prevents new clones from getting them; this catches a
 # machine cloned before that existed.
 crlf=""
-for f in "$CLAUDE/hooks/skill-router.sh" "$CLAUDE/statusline-command.sh" "$CLAUDE/verify-setup.sh"; do
+for f in "$CLAUDE/hooks/session-summary.sh" "$CLAUDE/statusline-command.sh" "$CLAUDE/verify-setup.sh"; do
   [ -f "$f" ] || continue
   head -1 "$f" | grep -q "$(printf '\r')" && crlf="$crlf $(basename "$f")"
 done
 [ -z "$crlf" ] && ok "scripts have LF endings" || err "CRLF line endings:$crlf (re-clone with the repo's .gitattributes, or: sed -i 's/\r$//' <file>)"
-
-# router probe: a bug prompt must route to systematic-debugging (tests the hook, not skill presence)
-if [ -x "$CLAUDE/hooks/skill-router.sh" ]; then
-  out="$(SKILL_ROUTES_FILE="$CLAUDE/hooks/skill-routes.json" bash "$CLAUDE/hooks/skill-router.sh" <<<'{"prompt":"the login form is broken and failing"}' 2>/dev/null)"
-  echo "$out" | grep -q "systematic-debugging" && ok "router probe routes bug -> systematic-debugging" || warn "router probe did not match"
-fi
-
-# router targets: every skill named in skill-routes.json should be reachable.
-# Warn-only: a route may legitimately point at a plugin-provided skill (not a
-# directory under ~/.claude/skills), and profiles intentionally carry different sets.
-if command -v jq >/dev/null 2>&1 && [ -f "$CLAUDE/hooks/skill-routes.json" ]; then
-  missing=""
-  while IFS= read -r s; do
-    [ -n "$s" ] || continue
-    # skills-disabled: quarantined by apply-profile, present but not in this profile
-    { [ -d "$CLAUDE/skills/$s" ] || [ -d "$CLAUDE/skills-disabled/$s" ]; } && continue
-    # plugin-provided: layout varies (marketplaces/<plugin>/skills|commands/<name>)
-    # -H because in an isolated config dir plugins/ is a symlink to the shared
-    # tree, and BSD find does not follow a symlinked start point. Without it this
-    # check degrades to a permanent warning.
-    [ -n "$(find -H "$CLAUDE/plugins" -maxdepth 5 -name "$s" -o -maxdepth 5 -name "$s.md" -o -maxdepth 5 -name "$s.toml" 2>/dev/null | head -1)" ] && continue
-    missing="$missing $s"
-    # jq.exe on Windows emits CRLF; without tr the names compare as "fullreview\r"
-  done < <(jq -r '.routes[].skill' "$CLAUDE/hooks/skill-routes.json" 2>/dev/null | tr -d '\r' | sort -u)
-  if [ -z "$missing" ]; then ok "all router targets resolve"
-  else warn "router targets not found locally:$missing (plugin-provided or absent in this profile)"; fi
-fi
 
 [ -f "$CLAUDE/ghost/ghost_scan.py" ] && ok "ghost engine present" || warn "ghost engine missing"
 

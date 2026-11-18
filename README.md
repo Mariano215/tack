@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-D4AE66"></a>
   <a href="../../actions/workflows/check.yml"><img alt="CI" src="https://github.com/Mariano215/tack/actions/workflows/check.yml/badge.svg"></a>
   <img alt="bash 3.2+" src="https://img.shields.io/badge/bash-3.2%2B-065FB2">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.6.0-3B7A57"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.7.0-3B7A57"></a>
 </p>
 
 <p align="center">
@@ -357,12 +357,12 @@ reports waiting commits on the statusline. It never pulls or re-applies; run
 `tack tune` follows the method of google-research/harness2, without its replay
 step. It reads the last 7 days of session transcripts for the active profile and
 counts signals: tool errors, hook blocks, rejected tool calls, user corrections,
-compactions, and skills the router asked for but no session loaded. Two
+and compactions. Two
 proposers draft edits from that evidence. INV covers how the agent works, and
 DOM covers what it knows. A gate then drops any edit that has no citation, that
 is cited in only one session, or that touches anything other than `.md`
 files under `skills/`, `agents/`, `commands/` and `output-styles/`, or
-`templates/CLAUDE.md`, `templates/AGENTS.md` and `hooks/skill-routes.json`. A composer merges the rest
+`templates/CLAUDE.md` and `templates/AGENTS.md`. A composer merges the rest
 or keeps the base. If `scripts/check.sh` passes, the job opens a **draft PR**
 labeled `tack-tune`. It never pushes `main`, so `tack sync` spreads nothing until you
 merge.
@@ -432,19 +432,6 @@ security context to sensitive changes, a set of general-purpose skills
 and `harness-builder` for new profiles),
 and `ghost`, a hook that blocks LLM-tell phrasing in `.txt`, `.docx` and `.pdf`
 writes. Edit `ghost/patterns.json` to make that list yours.
-
-The methodology skills from
-[superpowers](https://github.com/obra/superpowers) (MIT) ship vendored in
-`skills/`: brainstorming, writing-plans, executing-plans,
-subagent-driven-development, systematic-debugging, test-driven-development,
-requesting-code-review, verification-before-completion,
-finishing-a-development-branch and using-git-worktrees. The skill router sends
-feature, bug and test-first prompts to them. The superpowers plugin itself
-stays off: its SessionStart bootstrap tells the model to invoke a skill on
-"even a 1% chance", which over-triggers on Claude 5 models. Leave
-`superpowers@claude-plugins-official` out of your manifests. To take a newer
-upstream release, run `scripts/vendor-superpowers.sh <plugin dir>`;
-`skills/SUPERPOWERS.md` lists the local patches.
 
 Two mods ship in `mods/`, served by this repo as the `tack-mods`
 marketplace: `agent-graph` draws a live tree of subagents above the prompt,

@@ -45,18 +45,6 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/skill-router.sh\" ]; then bash \"$c/hooks/skill-router.sh\"; fi",
-            "timeout": 5,
-            "statusMessage": "Routing intent..."
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
@@ -104,11 +92,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); [[ \"$f\" == *graphify-out* ]] && exit 0; [ -f \"graphify-out/graph.json\" ] || exit 0; touch graphify-out/.needs_update 2>/dev/null; jq -n --arg f \"$f\" '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":(\"graphify: file written (\" + $f + \"): graph stale. Run `graphify update .` (no LLM, seconds) before the next graph query.\")}}' 2>/dev/null || true",
-            "statusMessage": "Flagging graphify update..."
-          },
-          {
-            "type": "command",
             "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/security-file-nudge.sh\" ]; then bash \"$c/hooks/security-file-nudge.sh\"; fi"
           }
         ]
@@ -133,10 +116,6 @@
             "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/plugin-auto-update.sh\" ]; then bash \"$c/hooks/plugin-auto-update.sh\"; fi",
             "async": true,
             "statusMessage": "Checking for plugin updates..."
-          },
-          {
-            "type": "command",
-            "command": "c=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; if [ -f \"$c/hooks/graphify-session.sh\" ]; then bash \"$c/hooks/graphify-session.sh\"; fi"
           }
         ]
       }
@@ -246,7 +225,7 @@
   },
   "agent": "task-orchestrator",
   "autoUpdatesChannel": "latest",
-  "autoMemoryEnabled": false,
+  "autoMemoryEnabled": true,
   "syncClaudeAiPlugins": false,
   "syncClaudeAiSkills": false,
   "useAutoModeDuringPlan": true

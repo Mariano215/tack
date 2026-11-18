@@ -18,7 +18,7 @@ trap 'rm -rf "$TMP"' EXIT
 fail() { echo "FAIL: $1"; [ -f "$RUNLOG" ] && tail -20 "$RUNLOG"; exit 1; }
 RUNLOG="$TMP/out.txt"
 
-# Fixture transcripts: a Bash error in two sessions, a routed skill never loaded.
+# Fixture transcripts: a Bash error in two sessions.
 CFG="$TMP/cfg"; mkdir -p "$CFG/projects/p" "$CFG/hooks"
 touch "$CFG/hooks/ghost-hook.sh"  # an installed hook; a name not installed must not become a detail
 echo dev > "$CFG/.harness-active"
@@ -93,8 +93,6 @@ run w1 || fail "week 1 run exited non-zero"
 R="$TMP/state/runs/w1-dev"
 jq -e '.signals[] | select(.signal=="tool_error:Bash:ls:sandbox-denied" and .count==2 and .sessions==2)' "$R/summary.json" >/dev/null \
   || fail "tool_error:Bash:ls should be 2 rows in 2 sessions (program name as detail)"
-jq -e '.signals[] | select(.signal=="route_ignored:demo" and .sessions==2)' "$R/summary.json" >/dev/null \
-  || fail "route_ignored:demo not found"
 jq -e '.signals[] | select(.signal=="correction:-")' "$R/summary.json" >/dev/null || fail "correction not found"
 jq -e '.signals[] | select(.signal=="hook_block:Write:ghost-hook.sh")' "$R/summary.json" >/dev/null || fail "hook name not taken as detail"
 jq -e '.signals[] | select(.signal=="tool_error:Read:.pdf")' "$R/summary.json" >/dev/null || fail "file extension not taken as detail"

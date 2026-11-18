@@ -32,13 +32,12 @@ from pathlib import Path
 # Markdown only under these dirs: a skill can ship scripts, and check.sh runs
 # tests that execute them, so a model-written .sh would run unattended.
 ALLOWED_MD_DIRS = ("skills/", "agents/", "commands/", "output-styles/")
-ALLOWED_FILES = ("templates/CLAUDE.md", "templates/AGENTS.md", "hooks/skill-routes.json")
+ALLOWED_FILES = ("templates/CLAUDE.md", "templates/AGENTS.md")
 ALLOWED_PREFIXES = ALLOWED_MD_DIRS + ALLOWED_FILES  # for messages
 TRUSTED_COMMENTERS = ("OWNER", "MEMBER", "COLLABORATOR")
 MIN_SESSIONS = 2   # harness2: a single-run defect is noise, a repeat is real
 LEDGER_CAP = 50    # harness2 has no cap and no dedup; we keep the newest per cue
 REFLECT_AFTER_DAYS = 7
-ROUTE_RE = re.compile(r'Invoke the Skill tool with skill \\?"([\w:.-]+)')
 CORRECTION_RE = re.compile(r"^\s*(no\b|nope|don'?t|do not|stop|wrong|that'?s not|not what|undo|revert)", re.I)
 REJECT_PREFIX = "The user doesn't want to proceed"
 # Telegram bot token, GitHub, Anthropic/OpenAI, AWS key shapes. An edit lands in a pushed PR.
@@ -116,12 +115,10 @@ def collect(cfg_dir, days, out_dir):
     rows = []
     for f in sorted(files):
         sid = f.stem
-        tool_names, used, routed = {}, set(), {}
+        tool_names = {}
         prev_type = None
         with open(f, encoding="utf-8", errors="replace") as fh:
             for n, raw in enumerate(fh, 1):
-                for m in ROUTE_RE.finditer(raw):
-                    routed.setdefault(m.group(1), n)
                 try:
                     rec = json.loads(raw)
                 except ValueError:
@@ -134,8 +131,6 @@ def collect(cfg_dir, days, out_dir):
                     for c in content:
                         if isinstance(c, dict) and c.get("type") == "tool_use":
                             tool_names[c.get("id")] = (c.get("name", "?"), _detail(c.get("name"), c.get("input")))
-                            if c.get("name") == "Skill":
-                                used.add(str((c.get("input") or {}).get("skill", "")))
                 elif typ == "user" and isinstance(content, list):
                     for c in content:
                         if not (isinstance(c, dict) and c.get("type") == "tool_result" and c.get("is_error")):
@@ -160,9 +155,6 @@ def collect(cfg_dir, days, out_dir):
                     rows.append({"session": sid, "line": n, "kind": "compaction", "key": "-", "snippet": ""})
                 if typ in ("user", "assistant"):
                     prev_type = typ
-        for skill, n in routed.items():
-            if skill not in used:
-                rows.append({"session": sid, "line": n, "kind": "route_ignored", "key": skill, "snippet": ""})
 
     with open(out / "signals.jsonl", "w", encoding="utf-8") as fh:
         for r in rows:

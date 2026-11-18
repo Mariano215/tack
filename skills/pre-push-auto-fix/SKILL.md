@@ -134,7 +134,7 @@ NOT SAFE TO PUSH
 Next Steps:
 1. Investigate auth.js changes (likely lines 34-52)
 2. Run failing tests locally: npm test test/auth.test.js
-3. Use the systematic-debugging skill for a failing test
+3. Find the root cause of the failing test
 4. Fix the issue manually
 5. Run `/pre-push` again before pushing
 ```
@@ -256,7 +256,6 @@ Claude automatically invokes pre-push-auto-fix:
 
 3. Reports: "NOT SAFE TO PUSH. 3 tests failing. Manual fixes required."
    - Provides specific failing tests
-   - Suggests the systematic-debugging skill to investigate
 ```
 
 ---
