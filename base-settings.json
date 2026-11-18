@@ -33,17 +33,6 @@
   },
   "enableAllProjectMcpServers": false,
   "hooks": {
-    "PreCompact": [
-      {
-        "matcher": "auto",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"systemMessage\": \"\u26a0\ufe0f Auto-compact firing: context window at limit. Committed work is safe; in-flight intent may be summarized.\"}'"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",

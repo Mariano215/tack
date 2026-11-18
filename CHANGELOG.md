@@ -10,6 +10,8 @@ existing profile needs.
   or `gh api` writes. Publishing is left to the permission mode. The guard now
   only denies Bash commands that read secret files and asks when a secret path
   is written in a form it cannot parse.
+- The PreCompact hook that only echoed a warning is gone. Claude Code already
+  shows when it compacts.
 
 ## v0.8.0
 
