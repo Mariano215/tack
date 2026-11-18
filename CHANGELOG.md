@@ -4,6 +4,13 @@ Versions follow [semantic versioning](https://semver.org/). Until 1.0 a minor
 bump can change the manifest contract; the notes say when it does and what an
 existing profile needs.
 
+## v0.8.1
+
+- `bash-guard.sh` no longer asks before `git push`, `gh pr merge`, `gh release`
+  or `gh api` writes. Publishing is left to the permission mode. The guard now
+  only denies Bash commands that read secret files and asks when a secret path
+  is written in a form it cannot parse.
+
 ## v0.8.0
 
 - security-guidance and commit-commands are off in `base-settings.json`
